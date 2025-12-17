@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 KEY = os.environ.get("INIT_DATA")
 HEADERS = {
     "accept": "application/json, text/plain, */*",
@@ -12,15 +13,16 @@ HEADERS = {
     "sec-ch-ua-platform": '"Android"',
     "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36"
 }
-def run():
+def job():
     if not KEY: return
     payload = {"initData": KEY}
-    try:
-        requests.post("https://gomxu.site/mining", headers=HEADERS, json=payload, timeout=5)
+    try: requests.post("https://gomxu.site/mining", headers=HEADERS, json=payload, timeout=5)
     except: pass
     try:
         data_ads = {**payload, "typeReward": "goldCoin"}
         requests.post("https://gomxu.site/viewads", headers=HEADERS, json=data_ads, timeout=5)
     except: pass
 if __name__ == "__main__":
-    run()
+    while True:
+        job()
+        time.sleep(905)
