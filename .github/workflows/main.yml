@@ -1,11 +1,10 @@
 name: bat_tu_gom_xu
-
 on:
   schedule:
     - cron: '0 */2 * * *'
   workflow_dispatch:
 jobs:
-  treo-bat-tu:
+  treo-acc-1:
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -15,18 +14,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          runs=$(gh run list --status in_progress --json databaseId --jq ".[] | select(.databaseId != ${{ github.run_id }}) | .databaseId")
+          runs=$(gh run list --repo ${{ github.repository }} --status in_progress --json databaseId --jq ".[] | select(.databaseId != ${{ github.run_id }}) | .databaseId")
           for run_id in $runs; do
-            echo "Phat hien job cu dang chay (ID: $run_id) -> Huy ngay lap tuc..."
-            gh run cancel $run_id
+            echo "Kill job cu: $run_id"
+            gh run cancel $run_id --repo ${{ github.repository }}
           done
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: '3.9'
       - run: pip install requests
-      - name: Chay Bat Tu
+      - name: Chay Bot Acc 1
         env:
           INIT_DATA: ${{ secrets.INIT_DATA }}
         timeout-minutes: 360
-        run: python 
+        run: python main.py
