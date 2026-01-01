@@ -40,7 +40,7 @@ def run_diagnostics():
     except: pass
 
     try:
-        requests.post(f"{HOST_CLUSTER}/getstatusrandomgold", headers=NET_CONFIG, json=security_packet, timeout=12)
+        requests.post(f"{HOST_CLUSTER}/randomgold", headers=NET_CONFIG, json=security_packet, timeout=12)
     except: pass
 
     try:
