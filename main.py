@@ -56,5 +56,5 @@ def run_diagnostics():
 if __name__ == "__main__":
     while True:
         run_diagnostics()
-        print("System entering sleep mode for 905s to save power...\n")
-        time.sleep(905)
+        print("System entering sleep mode for 901s to save power...\n")
+        time.sleep(901)
