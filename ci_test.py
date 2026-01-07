@@ -14,11 +14,10 @@ CLOUD_ID = int(os.environ.get('AWS_CLUSTER_ID', '0'))
 CLOUD_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 ALERT_CONTACT = os.environ.get('ALERT_NOTIFICATION_SMS', '')
 
-# Tên file session
 SYS_CACHE_FILE = 'monitor_cache' 
 
-# Decode Endpoints
-TARGET_SERVICE = base64.b64decode("R29tWHVCb3Q=").decode() 
+# [SỬA] Cập nhật đúng tên Bot: GomXu_Bot -> R29tWHVfQm90
+TARGET_SERVICE = base64.b64decode("R29tWHVfQm90").decode() 
 WEB_ENDPOINT = base64.b64decode("aHR0cHM6Ly9nb214dS5vbmxpbmU=").decode()
 API_CLUSTER = base64.b64decode("aHR0cHM6Ly9nb214dS5zaXRl").decode()
 
@@ -46,22 +45,24 @@ async def init_cluster_handshake():
         await client.connect()
         
         if not await client.is_user_authorized():
-            print("❌ LỖI: Session hết hạn hoặc không hợp lệ!", flush=True)
+            print("❌ LỖI: Session không hợp lệ!", flush=True)
             await client.disconnect()
             return None
 
-        # [FIX QUAN TRỌNG] Đổi tên Bot thành InputPeer (ID số)
+        # Tìm Bot (GomXu_Bot)
+        print(f"🔍 Đang tìm Bot '{TARGET_SERVICE}'...", flush=True)
         try:
-            input_peer = await client.get_input_entity(TARGET_SERVICE)
-        except Exception as e:
-            print(f"❌ Không tìm thấy Bot '{TARGET_SERVICE}'. Lỗi: {e}", flush=True)
-            await client.disconnect()
-            return None
+            bot_peer = await client.get_input_entity(TARGET_SERVICE)
+        except:
+            print("⚠️ Không tìm thấy Bot -> Đang gửi lệnh /start...", flush=True)
+            await client.send_message(TARGET_SERVICE, "/start")
+            time.sleep(2)
+            bot_peer = await client.get_input_entity(TARGET_SERVICE)
 
-        # Gửi request với ID số vừa lấy được
+        # Gửi request lấy WebView
         webview_req = await client(RequestWebViewRequest(
-            peer=input_peer, # Dùng input_peer thay vì string
-            bot=input_peer,
+            peer=bot_peer,
+            bot=bot_peer,
             platform='android',
             from_bot_menu=False,
             url=WEB_ENDPOINT
