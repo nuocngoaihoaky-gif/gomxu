@@ -101,8 +101,8 @@ async def main_process():
             else:
                 print(f"[{time.strftime('%H:%M:%S')}] Auth failed. Retrying...")
 
-            # 3. Standby for 15 minutes (905s)
-            await asyncio.sleep(905)
+            # 3. Standby for 15 minutes (901901s)
+            await asyncio.sleep(901)
             
         except Exception:
             # On error, brief cooldown then retry
