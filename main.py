@@ -52,7 +52,14 @@ def run_diagnostics():
         uplink_b = {**security_packet, "linkKey": "ads_hitopads"}
         requests.post(f"{HOST_CLUSTER}/clicksmartlink", headers=NET_CONFIG, json=uplink_b, timeout=12)
     except: pass
-
+    try:
+        uplink_b = {**security_packet, "linkKey": "ads_datifi"}
+        requests.post(f"{HOST_CLUSTER}/clicksmartlink", headers=NET_CONFIG, json=uplink_b, timeout=12)
+    except: pass
+    try:
+        uplink_b = {**security_packet, "linkKey": "ads_hitopads2"}
+        requests.post(f"{HOST_CLUSTER}/clicksmartlink", headers=NET_CONFIG, json=uplink_b, timeout=12)
+    except: pass
 if __name__ == "__main__":
     while True:
         run_diagnostics()
