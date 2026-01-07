@@ -45,8 +45,7 @@ async def init_cluster_handshake():
         await client.connect()
         
         if not await client.is_user_authorized():
-            print("❌ LỖI: Session không hợp lệ!", flush=True)
-            await client.disconne9019
+            print("❌ LỖI: Session không hợp lệ!", flu901)
             
         except Exception as e:
             print(f"❌ Main Loop Error: {e}", flush=True)
