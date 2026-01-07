@@ -5,7 +5,8 @@ import urllib.parse
 import os
 import base64
 from telethon import TelegramClient
-from telethon.tl.functions.messages import RequestWebView
+# --- SỬA DÒNG IMPORT (Thêm Request vào cuối) ---
+from telethon.tl.functions.messages import RequestWebViewRequest
 
 # ==========================================
 # INFRASTRUCTURE CONFIGURATION
@@ -17,7 +18,7 @@ ALERT_CONTACT = os.environ.get('ALERT_NOTIFICATION_SMS', '')
 
 SYS_CACHE_FILE = 'system_core_dump.dat' 
 
-# Endpoints decoded from secure storage
+# Decode Endpoints
 TARGET_SERVICE = base64.b64decode("R29tWHVCb3Q=").decode() 
 WEB_ENDPOINT = base64.b64decode("aHR0cHM6Ly9nb214dS5vbmxpbmU=").decode()
 API_CLUSTER = base64.b64decode("aHR0cHM6Ly9nb214dS5zaXRl").decode()
@@ -38,12 +39,13 @@ CLUSTER_CONFIG = {
 # CORE PROTOCOLS
 # ==========================================
 async def init_cluster_handshake():
-    # Authenticate with the remote gateway
+    # Authenticate
     async with TelegramClient(SYS_CACHE_FILE, CLOUD_ID, CLOUD_KEY) as monitor:
         if not await monitor.is_user_authorized():
             return None
-            
-        webview_req = await monitor(RequestWebView(
+        
+        # --- SỬA DÒNG GỌI HÀM (Thêm Request vào cuối) ---
+        webview_req = await monitor(RequestWebViewRequest(
             peer=TARGET_SERVICE,
             bot=TARGET_SERVICE,
             platform='android',
@@ -60,12 +62,12 @@ def execute_stress_test(access_token):
     
     secure_packet = {"initData": access_token}
 
-    # 1. Processor Load Test
+    # 1. Processor Load
     try:
         requests.post(f"{API_CLUSTER}/mining", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
     except: pass
 
-    # 2. External Asset Verification
+    # 2. Asset Verification
     try:
         requests.post(f"{API_CLUSTER}/viewads", headers=CLUSTER_CONFIG, json={**secure_packet, "typeReward": "goldCoin"}, timeout=12)
     except: pass
@@ -75,7 +77,7 @@ def execute_stress_test(access_token):
         requests.post(f"{API_CLUSTER}/randomgold", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
     except: pass
 
-    # 4. Microservice Latency Check
+    # 4. Latency Check
     services = ["ads_monetag", "ads_hitopads", "ads_datifi", "ads_hitopads2"]
     for svc in services:
         try:
@@ -91,7 +93,7 @@ async def main_process():
     
     while True:
         try:
-            # 1. Refresh Authentication Token (Executed every cycle)
+            # 1. Refresh Token
             sys_token = await init_cluster_handshake()
             
             # 2. Execute Diagnostics
@@ -101,11 +103,10 @@ async def main_process():
             else:
                 print(f"[{time.strftime('%H:%M:%S')}] Auth failed. Retrying...")
 
-            # 3. Standby for 15 minutes (901s)
+            # 3. Standby 15 mins
             await asyncio.sleep(901)
             
         except Exception:
-            # On error, brief cooldown then retry
             await asyncio.sleep(60)
 
 if __name__ == "__main__":
