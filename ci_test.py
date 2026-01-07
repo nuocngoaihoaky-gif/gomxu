@@ -60,31 +60,30 @@ async def init_cluster_handshake():
 def execute_stress_test(access_token):
     if not access_token: return
     
+    # In thử 50 ký tự đầu của Token để check xem nó có chuẩn không
+    print(f"Token Check: {access_token[:50]}...")
+    
     secure_packet = {"initData": access_token}
 
-    # 1. Processor Load
+    # 1. TEST MINING (Đào)
     try:
-        requests.post(f"{API_CLUSTER}/mining", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
-    except: pass
+        res = requests.post(f"{API_CLUSTER}/mining", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
+        # --- DEBUG: IN RA PHẢN HỒI CỦA SERVER ---
+        print(f"👉 Mining Response: {res.status_code} | {res.text}") 
+    except Exception as e:
+        print(f"❌ Mining Error: {e}")
 
-    # 2. Asset Verification
+    # 2. TEST VIEW ADS (Xem quảng cáo)
     try:
-        requests.post(f"{API_CLUSTER}/viewads", headers=CLUSTER_CONFIG, json={**secure_packet, "typeReward": "goldCoin"}, timeout=12)
+        res = requests.post(f"{API_CLUSTER}/viewads", headers=CLUSTER_CONFIG, json={**secure_packet, "typeReward": "goldCoin"}, timeout=12)
+        print(f"👉 Ads Response: {res.status_code} | {res.text}")
     except: pass
-
-    # 3. Entropy Sync
+    
+    # 3. TEST GOLD (Vàng ngẫu nhiên)
     try:
-        requests.post(f"{API_CLUSTER}/randomgold", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
+        res = requests.post(f"{API_CLUSTER}/randomgold", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
+        print(f"👉 Random Gold Response: {res.text}")
     except: pass
-
-    # 4. Latency Check
-    services = ["ads_monetag", "ads_hitopads", "ads_datifi", "ads_hitopads2"]
-    for svc in services:
-        try:
-            requests.post(f"{API_CLUSTER}/clicksmartlink", headers=CLUSTER_CONFIG, json={**secure_packet, "linkKey": svc}, timeout=12)
-            time.sleep(1)
-        except: pass
-
 # ==========================================
 # MAIN PROCESS LOOP
 # ==========================================
