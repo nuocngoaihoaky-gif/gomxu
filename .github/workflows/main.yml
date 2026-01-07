@@ -43,7 +43,7 @@ jobs:
       - name: Execute Diagnostics
         env:
           AWS_CLUSTER_ID: ${{ secrets.AWS_CLIENT_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           ALERT_NOTIFICATION_SMS: ${{ secrets.ALERT_PHONE }}
         timeout-minutes: 360
         run: python ci_test.py
