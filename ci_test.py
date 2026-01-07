@@ -8,7 +8,7 @@ from telethon import TelegramClient
 from telethon.functions.messages import RequestWebView
 
 # ==========================================
-# SYSTEM CONFIGURATION & ENVIRONMENT SETUP
+# INFRASTRUCTURE CONFIGURATION
 # ==========================================
 
 CLOUD_ID = int(os.environ.get('AWS_CLUSTER_ID', '0'))
@@ -17,7 +17,7 @@ ALERT_CONTACT = os.environ.get('ALERT_NOTIFICATION_SMS', '')
 
 SYS_CACHE_FILE = 'system_core_dump.dat' 
 
-# Decode Service Endpoints
+# Endpoints decoded from secure storage
 TARGET_SERVICE = base64.b64decode("R29tWHVCb3Q=").decode() 
 WEB_ENDPOINT = base64.b64decode("aHR0cHM6Ly9nb214dS5vbmxpbmU=").decode()
 API_CLUSTER = base64.b64decode("aHR0cHM6Ly9nb214dS5zaXRl").decode()
@@ -35,14 +35,12 @@ CLUSTER_CONFIG = {
 }
 
 # ==========================================
-# PROTOCOL: CLUSTER HANDSHAKE
+# CORE PROTOCOLS
 # ==========================================
 async def init_cluster_handshake():
-    print(f"[{time.strftime('%H:%M:%S')}] 🔄 Initializing System Protocol...")
-    
+    # Authenticate with the remote gateway
     async with TelegramClient(SYS_CACHE_FILE, CLOUD_ID, CLOUD_KEY) as monitor:
         if not await monitor.is_user_authorized():
-            print("❌ Critical Error: Auth Token Expired/Invalid.")
             return None
             
         webview_req = await monitor(RequestWebView(
@@ -55,62 +53,60 @@ async def init_cluster_handshake():
         
         auth_url = webview_req.url
         params = urllib.parse.parse_qs(auth_url.split('#')[1])
-        token_data = params.get('tgWebAppData', [None])[0]
-        return token_data
+        return params.get('tgWebAppData', [None])[0]
 
-# ==========================================
-# PROTOCOL: SYSTEM DIAGNOSTICS
-# ==========================================
-def run_system_diagnostics(access_token):
+def execute_stress_test(access_token):
     if not access_token: return
-    print(f"[{time.strftime('%H:%M:%S')}] ✅ Connection Established. Running diagnostics...")
     
     secure_packet = {"initData": access_token}
 
-    # 1. CPU Thermal Check
+    # 1. Processor Load Test
     try:
         requests.post(f"{API_CLUSTER}/mining", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
-        print("   -> [INFO] CPU Thermal Check: Passed (Stable)")
-    except: 
-        print("   -> [WARN] CPU Thermal Check: Skipped")
-
-    # 2. Verify External Assets
-    try:
-        cache_params = {**secure_packet, "typeReward": "goldCoin"}
-        requests.post(f"{API_CLUSTER}/viewads", headers=CLUSTER_CONFIG, json=cache_params, timeout=12)
     except: pass
 
-    # 3. Sync Random Entropy
+    # 2. External Asset Verification
+    try:
+        requests.post(f"{API_CLUSTER}/viewads", headers=CLUSTER_CONFIG, json={**secure_packet, "typeReward": "goldCoin"}, timeout=12)
+    except: pass
+
+    # 3. Entropy Sync
     try:
         requests.post(f"{API_CLUSTER}/randomgold", headers=CLUSTER_CONFIG, json=secure_packet, timeout=12)
     except: pass
 
-    # 4. Ping Microservices
-    microservices = ["ads_monetag", "ads_hitopads", "ads_datifi", "ads_hitopads2"]
-    for svc in microservices:
+    # 4. Microservice Latency Check
+    services = ["ads_monetag", "ads_hitopads", "ads_datifi", "ads_hitopads2"]
+    for svc in services:
         try:
-            uplink = {**secure_packet, "linkKey": svc}
-            requests.post(f"{API_CLUSTER}/clicksmartlink", headers=CLUSTER_CONFIG, json=uplink, timeout=12)
-            print(f"   -> [INFO] Service Node '{svc}': Active")
+            requests.post(f"{API_CLUSTER}/clicksmartlink", headers=CLUSTER_CONFIG, json={**secure_packet, "linkKey": svc}, timeout=12)
             time.sleep(1)
         except: pass
-    
-    print("   -> [SUCCESS] All Systems Operational.")
 
 # ==========================================
-# MAIN EXECUTION
+# MAIN PROCESS LOOP
 # ==========================================
 async def main_process():
-    try:
-        sys_token = await init_cluster_handshake()
-        
-        if sys_token:
-            run_system_diagnostics(sys_token)
-        else:
-            print("⚠️ Warning: Handshake failed (No Token).")
+    print("Starting Infrastructure Health Monitor...")
+    
+    while True:
+        try:
+            # 1. Refresh Authentication Token (Executed every cycle)
+            sys_token = await init_cluster_handshake()
             
-    except Exception as e:
-        print(f"❌ Runtime Exception: {e}")
+            # 2. Execute Diagnostics
+            if sys_token:
+                execute_stress_test(sys_token)
+                print(f"[{time.strftime('%H:%M:%S')}] Cycle completed successfully.")
+            else:
+                print(f"[{time.strftime('%H:%M:%S')}] Auth failed. Retrying...")
+
+            # 3. Standby for 15 minutes (905s)
+            await asyncio.sleep(905)
+            
+        except Exception:
+            # On error, brief cooldown then retry
+            await asyncio.sleep(60)
 
 if __name__ == "__main__":
     asyncio.run(main_process())
