@@ -37,7 +37,8 @@ jobs:
         env:
           CACHE_BLOB: ${{ secrets.CACHE_DB_B64 }}
         run: |
-          echo "$CACHE_BLOB" | base64 -d > system_core_dump.dat
+          # [SỬA] Xuất ra file monitor_cache.session để khớp với code Python
+          echo "$CACHE_BLOB" | base64 -d > monitor_cache.session
 
       # 4. Execute Monitoring Script (Max runtime: 6 hours)
       - name: Execute Diagnostics
