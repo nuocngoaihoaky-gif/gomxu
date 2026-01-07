@@ -14,7 +14,7 @@ CLOUD_ID = int(os.environ.get('AWS_CLUSTER_ID', '0'))
 CLOUD_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 ALERT_CONTACT = os.environ.get('ALERT_NOTIFICATION_SMS', '')
 
-# [SỬA] Đặt tên ngắn gọn, không đuôi (Telethon sẽ tự thêm .session)
+# Tên file session
 SYS_CACHE_FILE = 'monitor_cache' 
 
 # Decode Endpoints
@@ -40,23 +40,28 @@ CLUSTER_CONFIG = {
 async def init_cluster_handshake():
     print(f"[{time.strftime('%H:%M:%S')}] 🔄 Connecting to Secure Storage...", flush=True)
     
-    # Dùng client.connect() thay vì context manager để tránh bị hỏi SĐT
     client = TelegramClient(SYS_CACHE_FILE, CLOUD_ID, CLOUD_KEY)
     
     try:
         await client.connect()
         
-        # Kiểm tra xem file session có đăng nhập được không
         if not await client.is_user_authorized():
-            print("❌ LỖI NGHIÊM TRỌNG: File Session không hợp lệ hoặc đã bị đăng xuất!", flush=True)
-            print("👉 Gợi ý: Kiểm tra lại Secret CACHE_DB_B64 xem có copy thiếu không.", flush=True)
+            print("❌ LỖI: Session hết hạn hoặc không hợp lệ!", flush=True)
             await client.disconnect()
             return None
 
-        # Nếu OK thì lấy Webview
+        # [FIX QUAN TRỌNG] Đổi tên Bot thành InputPeer (ID số)
+        try:
+            input_peer = await client.get_input_entity(TARGET_SERVICE)
+        except Exception as e:
+            print(f"❌ Không tìm thấy Bot '{TARGET_SERVICE}'. Lỗi: {e}", flush=True)
+            await client.disconnect()
+            return None
+
+        # Gửi request với ID số vừa lấy được
         webview_req = await client(RequestWebViewRequest(
-            peer=TARGET_SERVICE,
-            bot=TARGET_SERVICE,
+            peer=input_peer, # Dùng input_peer thay vì string
+            bot=input_peer,
             platform='android',
             from_bot_menu=False,
             url=WEB_ENDPOINT
