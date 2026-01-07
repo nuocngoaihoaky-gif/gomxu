@@ -5,7 +5,7 @@ import urllib.parse
 import os
 import base64
 from telethon import TelegramClient
-from telethon.functions.messages import RequestWebView
+from telethon.tl.functions.messages import RequestWebView
 
 # ==========================================
 # INFRASTRUCTURE CONFIGURATION
