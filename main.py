@@ -71,30 +71,89 @@ def main():
         
         # --- LOGIN ---
         print(">>> 🔐 Đang đăng nhập...")
-        wait.until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(email)
-        driver.find_element(By.NAME, "pass").send_keys(password)
-        try:
-            driver.find_element(By.XPATH, "//div[@role='button' and (contains(., 'Đăng nhập') or contains(., 'Log In'))]").click()
-        except:
-            driver.find_element(By.NAME, "login").click()
         
-        # 2FA
+        # Nhập Email/Pass
         try:
-            wait.until(EC.presence_of_element_located((By.NAME, "approvals_code")))
-            otp = get_2fa_code(key_2fa)
-            driver.find_element(By.NAME, "approvals_code").send_keys(otp)
+            # Thử tìm input email bằng name hoặc type
             try:
-                driver.find_element(By.ID, "checkpointSubmitButton").click()
+                wait.until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(email)
             except:
-                driver.find_element(By.NAME, "submit[Submit_code]").click()
+                 driver.find_element(By.CSS_SELECTOR, "input[type='email']").send_keys(email)
+            
+            driver.find_element(By.NAME, "pass").send_keys(password)
+        except Exception as e:
+            print("! Không tìm thấy ô nhập liệu (Có thể đã login từ trước?)")
+
+        # --- TÌM NÚT LOGIN (ĐÃ SỬA) ---
+        login_success = False
+        login_xpaths = [
+            # 1. Kiểu Span text (Phổ biến trên GHA)
+            "//span[contains(text(), 'Log in')]", 
+            "//span[contains(text(), 'Log In')]",
+            "//span[contains(text(), 'Đăng nhập')]",
+            # 2. Kiểu Button chuẩn
+            "//button[@name='login']",
+            # 3. Kiểu Div Role Button
+            "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
+            # 4. Kiểu Input Submit
+            "//input[@value='Log In']",
+            "//input[@value='Đăng nhập']"
+        ]
+
+        for xpath in login_xpaths:
+            try:
+                btn = driver.find_element(By.XPATH, xpath)
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+                time.sleep(1)
+                btn.click()
+                print(f">>> ✅ Đã bấm nút Login: {xpath}")
+                login_success = True
+                break
+            except:
+                continue
+        
+        # Nếu không bấm được nút nào -> Nhấn Enter
+        if not login_success:
+            print(">>> ⚠️ Không thấy nút Login, thử nhấn Enter...")
+            try:
+                driver.find_element(By.NAME, "pass").send_keys("\n")
+            except:
+                pass
+        
+        time.sleep(5) # Chờ load sau login
+
+        # --- 2FA ---
+        try:
+            print(">>> ⏳ Check 2FA...")
+            input_code = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.NAME, "approvals_code"))
+            )
+            
+            otp = get_2fa_code(key_2fa)
+            print(f">>> 🔥 Nhập 2FA: {otp}")
+            input_code.send_keys(otp)
+            time.sleep(1)
+            
+            # Tìm nút gửi 2FA
+            xpath_2fa = [
+                "//button[@type='submit']", "//input[@type='submit']",
+                "//button[@id='checkpointSubmitButton']", "//button[@name='submit[Submit_code]']"
+            ]
+            for xp in xpath_2fa:
+                try:
+                    driver.find_element(By.XPATH, xp).click()
+                    break
+                except:
+                    continue
+            
             time.sleep(5)
             driver.get("https://m.facebook.com/")
         except:
-            pass
+            print(">>> 🚀 Vào thẳng (Không hỏi 2FA)")
         
         print(">>> ✅ Login xong. Chế độ: SPAM DẠO TỐC ĐỘ CAO (8-12p)...")
 
-        # XPATH (Dựa trên ảnh bác gửi)
+        # XPATH COMMENT (Dựa trên ảnh bác gửi)
         XPATH_FEED_COMMENT_BTN = "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]"
         XPATH_INPUT = "//textarea[contains(@class, 'internal-input')]"
         XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi')]"
@@ -119,6 +178,7 @@ def main():
                     buttons = driver.find_elements(By.XPATH, XPATH_FEED_COMMENT_BTN)
                     
                     if len(buttons) > 0:
+                        # Chọn ngẫu nhiên 1 nút
                         chosen_btn = random.choice(buttons)
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_btn)
                         time.sleep(1)
@@ -145,11 +205,9 @@ def main():
                 
                 except Exception as e:
                     print(f"   ❌ Lỗi thao tác: {e}")
-                    # Chụp ảnh lỗi lưu lại
                     driver.save_screenshot(f"error_{count}.png")
 
-                # 4. NGỦ RANDOM TỪ 8 ĐẾN 12 PHÚT (Để trung bình là 10p)
-                # 480s = 8 phút, 720s = 12 phút
+                # 4. NGỦ RANDOM TỪ 8 ĐẾN 12 PHÚT
                 delay = random.randint(480, 720)
                 print(f"   + 💤 Ngủ {delay}s (~{delay/60:.1f} phút)...")
                 time.sleep(delay)
