@@ -72,8 +72,10 @@ def setup_driver():
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
     
-    # Fake User-Agent giống ảnh bác gửi (Chrome Windows) để đồng bộ, hoặc Mobile tùy ý
-    # Nhưng giữ Mobile cho nhẹ
+    # --- FIX LỖI MÀN HÌNH TRẮNG ---
+    # Ép buộc kích thước cửa sổ để không bị lỗi render 0x0
+    chrome_options.add_argument("--window-size=375,812") 
+    
     mobile_emulation = { "deviceName": "iPhone X" }
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
     
@@ -86,7 +88,7 @@ def main():
     key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 30) # Tăng time chờ lên 30s
     gui_anh_tele(driver, "🚀 Bot bắt đầu chạy...")
 
     try:
@@ -109,7 +111,9 @@ def main():
         except Exception as e:
             gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
 
-        # BẤM LOGIN
+        # BẤM LOGIN (Sửa lại logic: Bấm được là thôi, không Enter nữa)
+        print(">>> 🔎 Đang bấm nút Login...", flush=True)
+        login_clicked = False
         login_xpaths = [
             "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
             "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']",
@@ -122,96 +126,97 @@ def main():
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
                 time.sleep(1)
                 btn.click()
+                print(f">>> ✅ Đã bấm nút: {xpath}", flush=True)
+                login_clicked = True
                 break
             except:
                 continue
         
-        try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
-        except: pass
+        # Chỉ Enter nếu chưa bấm được nút nào (Tránh spam lệnh làm trắng trang)
+        if not login_clicked:
+            print(">>> ⚠️ Thử Enter...", flush=True)
+            try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
+            except: pass
         
-        print(">>> ⏳ Chờ 10s...", flush=True)
-        time.sleep(10)
+        print(">>> ⏳ Chờ 15s để load trang 2FA...", flush=True)
+        time.sleep(15) # Tăng time chờ load
         
-        # --- XỬ LÝ 2FA (CODE MỚI - FIX GIAO DIỆN BLOKS) ---
+        # --- XỬ LÝ 2FA ---
         print(">>> 🕵️ Đang quét màn hình 2FA...", flush=True)
         
-        # 1. Tìm ô nhập 2FA (Quét tất cả input text/number)
+        # Thử tìm ô nhập bằng nhiều cách
         fa_input = None
+        
+        # Cách 1: Tìm ô input có type='number' hoặc 'tel' (Thường là ô 2FA)
         try:
-            # Tìm tất cả thẻ input
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
-                # Lọc ra các ô input có thể nhập liệu (text, number, tel, password)
-                inp_type = inp.get_attribute("type")
-                if inp_type in ["text", "number", "tel", "password"]:
-                    # Nếu là ô password chính thì bỏ qua, còn lại khả năng cao là ô 2FA
-                    if inp.get_attribute("name") != "pass":
-                        fa_input = inp
-                        break
-        except:
-            pass
-        
-        # Nếu cách trên không được, thử XPath cụ thể
+                if inp.get_attribute("type") in ["tel", "number"]:
+                    fa_input = inp
+                    break
+        except: pass
+
+        # Cách 2: Tìm theo placeholder hoặc name
         if not fa_input:
             fa_xpaths = [
                 "//input[@name='approvals_code']",
                 "//input[@placeholder='Code']", 
-                "//input[@aria-label='Code']",
-                "//input[@type='tel']"
+                "//input[@placeholder='Mã']",
+                "//input[@aria-label='Code']"
             ]
             for xp in fa_xpaths:
                 try:
                     fa_input = driver.find_element(By.XPATH, xp)
                     break
-                except:
-                    continue
+                except: continue
 
         if fa_input:
             otp = get_2fa_code(key_2fa)
-            gui_anh_tele(driver, f"🔥 Tìm thấy ô nhập 2FA! Đang điền OTP: {otp}")
+            gui_anh_tele(driver, f"🔥 Tìm thấy ô 2FA! Nhập: {otp}")
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
             
             fa_input.click()
             fa_input.send_keys(otp)
             time.sleep(2)
             
-            # 2. Bấm nút Continue (Dựa trên ảnh bác gửi: div role=button aria-label=Continue)
-            print(">>> 🕵️ Tìm nút Continue...", flush=True)
+            # Tìm nút Tiếp tục
+            print(">>> 🕵️ Bấm Tiếp tục...", flush=True)
             submit_success = False
             submit_xpaths = [
-                "//div[@role='button' and @aria-label='Continue']",  # Chuẩn English
-                "//div[@role='button' and @aria-label='Tiếp tục']",  # Chuẩn Tiếng Việt
-                "//span[contains(text(), 'Continue')]",
-                "//span[contains(text(), 'Tiếp tục')]",
+                "//div[@role='button' and @aria-label='Continue']",
+                "//div[@role='button' and @aria-label='Tiếp tục']",
                 "//button[@type='submit']", 
                 "//button[@id='checkpointSubmitButton']"
             ]
-            
             for btn_xp in submit_xpaths:
                 try:
-                    btn = driver.find_element(By.XPATH, btn_xp)
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-                    time.sleep(1)
-                    btn.click()
-                    print(f">>> ✅ Đã bấm nút: {btn_xp}", flush=True)
+                    driver.find_element(By.XPATH, btn_xp).click()
                     submit_success = True
                     break
-                except:
-                    continue
+                except: continue
             
-            if not submit_success:
-                # Đường cùng thì Enter
-                fa_input.send_keys(Keys.ENTER)
+            if not submit_success: fa_input.send_keys(Keys.ENTER)
             
             time.sleep(10)
-            gui_anh_tele(driver, "📸 Kết quả sau khi nhập 2FA")
+            gui_anh_tele(driver, "📸 Sau khi nhập 2FA")
         else:
-            gui_anh_tele(driver, "⚠️ Không tìm thấy ô nhập 2FA (Có thể đã vào thẳng?)")
+            # NẾU KHÔNG THẤY Ô NHẬP -> IN RA HTML ĐỂ BIẾT TRANG GÌ
+            print(">>> ⚠️ KHÔNG THẤY Ô 2FA. ĐANG Ở TRANG NÀO?", flush=True)
+            try:
+                # In tiêu đề và nội dung trang web ra log để đọc
+                page_title = driver.title
+                page_body = driver.find_element(By.TAG_NAME, "body").text[:500] # Lấy 500 chữ đầu
+                print(f"   + Title: {page_title}", flush=True)
+                print(f"   + Body Text: {page_body}", flush=True)
+                
+                gui_anh_tele(driver, f"⚠️ Lỗi tìm ô 2FA. Web hiện chữ: {page_body[:100]}...")
+            except:
+                pass
 
-        # --- CHECK LẠI LẦN CUỐI ---
-        if len(driver.find_elements(By.NAME, "pass")) > 0 or len(driver.find_elements(By.NAME, "login")) > 0:
-            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI: Bị đá về trang Login!")
-            print(">>> 🛑 Dừng Bot.", flush=True)
+        # --- CHECK THÀNH CÔNG ---
+        # Kiểm tra xem có bị đá về Login không
+        if len(driver.find_elements(By.NAME, "pass")) > 0:
+            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI: Vẫn ở trang Login!")
             return
 
         gui_anh_tele(driver, "✅ LOGIN THÀNH CÔNG! Đi spam...")
@@ -255,9 +260,9 @@ def main():
                         
                         driver.find_element(By.XPATH, XPATH_SEND).click()
                         print(f"   + ✅ Đã comment!", flush=True)
-                        gui_anh_tele(driver, f"✅ Đã Comment thành công (Lượt {count})")
+                        gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
                     except Exception as e:
-                        gui_anh_tele(driver, f"⚠️ Lỗi nhập comment: {e}")
+                        gui_anh_tele(driver, f"⚠️ Lỗi nhập: {e}")
                 else:
                     gui_anh_tele(driver, f"⚠️ Không thấy nút comment (Lượt {count})")
 
