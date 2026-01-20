@@ -50,7 +50,7 @@ jobs:
       # 4. (Bonus) Tự động lưu ảnh lỗi nếu tool chết
       # Giúp bác debug xem tại sao lỗi mà không cần nhìn màn hình
       - name: Upload Error Artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
