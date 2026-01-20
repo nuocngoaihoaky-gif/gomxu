@@ -5,6 +5,7 @@ import pyotp
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys # Cần cái này để nhấn Enter
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -52,6 +53,7 @@ def setup_driver():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-dev-shm-usage")
     # Giả lập iPhone X
     mobile_emulation = { "deviceName": "iPhone X" }
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
@@ -63,93 +65,106 @@ def main():
     key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
-    wait = WebDriverWait(driver, 15)
+    wait = WebDriverWait(driver, 20) # Tăng timeout lên 20s cho mạng lag
 
     try:
         print(">>> 📱 Đang vào m.facebook.com...")
         driver.get("https://m.facebook.com/")
         
         # --- LOGIN ---
-        print(">>> 🔐 Đang đăng nhập...")
+        print(">>> 🔐 Đang nhập thông tin...")
         
-        # Nhập Email/Pass
+        # 1. Nhập Email/Pass
         try:
-            # Thử tìm input email bằng name hoặc type
             try:
-                wait.until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(email)
+                # Tìm ô email, đôi khi nó là input[type=email] hoặc name=email
+                email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
             except:
-                 driver.find_element(By.CSS_SELECTOR, "input[type='email']").send_keys(email)
+                email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
             
-            driver.find_element(By.NAME, "pass").send_keys(password)
+            email_box.send_keys(email)
+            
+            pass_box = driver.find_element(By.NAME, "pass")
+            pass_box.send_keys(password)
         except Exception as e:
-            print("! Không tìm thấy ô nhập liệu (Có thể đã login từ trước?)")
+            print(f"! Lỗi nhập liệu (Có thể đã login): {e}")
 
-        # --- TÌM NÚT LOGIN (ĐÃ SỬA) ---
+        # 2. Bấm Nút Login (Đã fix theo ảnh Bloks Interface)
+        print(">>> Đang tìm nút Login...")
         login_success = False
         login_xpaths = [
-            # 1. Kiểu Span text (Phổ biến trên GHA)
+            # Ưu tiên 1: Span text (Giao diện Bloks trong ảnh bác gửi)
             "//span[contains(text(), 'Log in')]", 
             "//span[contains(text(), 'Log In')]",
             "//span[contains(text(), 'Đăng nhập')]",
-            # 2. Kiểu Button chuẩn
+            
+            # Ưu tiên 2: Button name='login' (Giao diện cũ)
             "//button[@name='login']",
-            # 3. Kiểu Div Role Button
+            
+            # Ưu tiên 3: Div role button (Giao diện React)
             "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
-            # 4. Kiểu Input Submit
+            
+            # Ưu tiên 4: Input submit
             "//input[@value='Log In']",
-            "//input[@value='Đăng nhập']"
+            "//input[@type='submit']"
         ]
 
         for xpath in login_xpaths:
             try:
                 btn = driver.find_element(By.XPATH, xpath)
+                # Scroll tới nút để tránh bị che
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
                 time.sleep(1)
                 btn.click()
-                print(f">>> ✅ Đã bấm nút Login: {xpath}")
+                print(f">>> ✅ BINGO! Đã bấm nút Login: {xpath}")
                 login_success = True
                 break
             except:
                 continue
         
-        # Nếu không bấm được nút nào -> Nhấn Enter
+        # Nếu không bấm được nút nào -> Dùng phím ENTER
         if not login_success:
-            print(">>> ⚠️ Không thấy nút Login, thử nhấn Enter...")
+            print(">>> ⚠️ Không thấy nút Login, thử nhấn ENTER...")
             try:
-                driver.find_element(By.NAME, "pass").send_keys("\n")
+                driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
+                login_success = True
             except:
-                pass
+                print(">>> ❌ Không thể nhấn Enter.")
         
-        time.sleep(5) # Chờ load sau login
+        time.sleep(8) # Chờ lâu hơn chút cho chắc
 
-        # --- 2FA ---
+        # --- XỬ LÝ 2FA ---
         try:
-            print(">>> ⏳ Check 2FA...")
+            print(">>> ⏳ Kiểm tra 2FA...")
+            # Tìm ô nhập code
             input_code = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.NAME, "approvals_code"))
             )
             
             otp = get_2fa_code(key_2fa)
-            print(f">>> 🔥 Nhập 2FA: {otp}")
+            print(f">>> 🔥 Nhập mã 2FA: {otp}")
             input_code.send_keys(otp)
             time.sleep(1)
             
             # Tìm nút gửi 2FA
             xpath_2fa = [
-                "//button[@type='submit']", "//input[@type='submit']",
-                "//button[@id='checkpointSubmitButton']", "//button[@name='submit[Submit_code]']"
+                "//button[@type='submit']", 
+                "//input[@type='submit']",
+                "//button[@id='checkpointSubmitButton']", 
+                "//button[@name='submit[Submit_code]']"
             ]
             for xp in xpath_2fa:
                 try:
                     driver.find_element(By.XPATH, xp).click()
+                    print(f">>> Đã gửi 2FA bằng: {xp}")
                     break
                 except:
                     continue
             
-            time.sleep(5)
+            time.sleep(8)
             driver.get("https://m.facebook.com/")
         except:
-            print(">>> 🚀 Vào thẳng (Không hỏi 2FA)")
+            print(">>> 🚀 Vào thẳng (Không hỏi 2FA hoặc Login thất bại nhưng cứ thử chạy tiếp).")
         
         print(">>> ✅ Login xong. Chế độ: SPAM DẠO TỐC ĐỘ CAO (8-12p)...")
 
@@ -169,6 +184,7 @@ def main():
                 time.sleep(random.randint(5, 8))
                 
                 scroll_times = random.randint(3, 7)
+                print(f"   + Đang lướt {scroll_times} lần...")
                 for i in range(scroll_times):
                     driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)})")
                     time.sleep(random.randint(1, 3))
@@ -186,6 +202,7 @@ def main():
                         time.sleep(3)
                         
                         # 3. Nhập & Gửi
+                        # Chờ ô nhập hiện ra (quan trọng)
                         input_box = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_INPUT)))
                         input_box.click()
                         
@@ -194,6 +211,7 @@ def main():
                         final_content = bien_hinh_van_ban(full_content)
                         
                         input_box.send_keys(final_content)
+                        print("   + Đã nhập nội dung.")
                         time.sleep(2)
                         
                         send_btn = driver.find_element(By.XPATH, XPATH_SEND)
@@ -201,11 +219,15 @@ def main():
                         print(f"   + ✅ Đã comment thành công!")
                         
                     else:
-                        print("   ! Không thấy nút comment nào.")
+                        print("   ! Không thấy nút comment nào (Lỗi load trang?).")
                 
                 except Exception as e:
-                    print(f"   ❌ Lỗi thao tác: {e}")
-                    driver.save_screenshot(f"error_{count}.png")
+                    print(f"   ❌ Lỗi thao tác comment: {e}")
+                    # Chụp ảnh lỗi nếu có
+                    try:
+                        driver.save_screenshot(f"error_{count}.png")
+                    except:
+                        pass
 
                 # 4. NGỦ RANDOM TỪ 8 ĐẾN 12 PHÚT
                 delay = random.randint(480, 720)
