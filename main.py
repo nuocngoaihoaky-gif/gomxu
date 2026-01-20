@@ -28,7 +28,7 @@ PRICE_LIST_TEMPLATE = """
 ✅ 8K = 1.000 Follow Facebook
 ✅ 28K = 1.000 Follow TikTok
 ✅ 3K = 1.000 Tym TikTok
-👉 Vào việc ngay tại Bot: @intro_like_bot
+👉 Auto tăng 24/7 tại Bot TeIe: @intro_like_bot
 """
 
 def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
@@ -83,7 +83,7 @@ def main():
     key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
-    wait = WebDriverWait(driver, 30)
+    wait = WebDriverWait(driver, 10)
     gui_anh_tele(driver, "🚀 Bot bắt đầu chạy...")
 
     try:
@@ -129,11 +129,10 @@ def main():
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
         
-        print(">>> ⏳ Chờ 15s...", flush=True)
-        time.sleep(15)
+        print(">>> ⏳ Chờ 5s...", flush=True)
+        time.sleep(5)
         
         # --- XỬ LÝ 2FA & THIẾT BỊ ---
-        # (Giữ nguyên logic xử lý 2FA đã chạy ổn)
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
         
         # CASE 1: TRY ANOTHER WAY
@@ -206,31 +205,24 @@ def main():
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ SPAM...")
 
         # ==========================================
-        #           LOGIC SPAM (ĐÃ FIX SELECTOR)
+        #           LOGIC SPAM (FIX LỖI EMOJI BMP)
         # ==========================================
         
-        # 1. Selector Tìm Nút Bình Luận (Dựa trên ảnh bác gửi)
-        # Bắt buộc phải dùng @aria-label vì text hiển thị chỉ là số
         XPATH_COMMENT_BTNS = [
-            # Dạng: aria-label="5 comments" hoặc "1 bình luận"
             "//div[@role='button' and contains(@aria-label, 'comment')]",
             "//div[@role='button' and contains(@aria-label, 'bình luận')]",
-            
-            # Dạng Link (nếu có)
-            "//a[contains(., 'comment')]",
-            "//a[contains(., 'bình luận')]",
-            
-            # Dự phòng: Tìm cái nút nằm ngay cạnh nút Like
-            "//div[@aria-label='Like']/following-sibling::div[@role='button']"
+            "//div[@role='button' and contains(., 'Bình luận')]", # Text thuần
+            "//div[@role='button' and contains(., 'Comment')]",   # Text thuần
+            "//span[contains(text(), 'Bình luận')]",
+            "//span[contains(text(), 'Comment')]"
         ]
         
-        # 2. Selector Ô Nhập Liệu
-        # Tìm textarea có placeholder hoặc class đặc trưng
+        # Thêm textarea vào selector ô nhập
         XPATH_INPUTS = [
             "//textarea[contains(@class, 'internal-input')]",
             "//textarea[contains(@placeholder, 'Viết bình luận')]",
             "//textarea[contains(@placeholder, 'Write a comment')]",
-            "//div[@role='textbox']" # Trường hợp nó là div editable
+            "//div[@role='textbox']"
         ]
 
         XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi' or @aria-label='Post')]"
@@ -241,12 +233,11 @@ def main():
                 count += 1
                 print(f"\n--- 🔄 Lượt quét {count} ---", flush=True)
                 
-                # 1. Làm mới trang (Vào trang chủ để thấy bài mới)
+                # 1. Làm mới trang
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
                 # 2. Lướt tìm bài
-                # Lướt 3 phát để load vài bài
                 for i in range(3):
                     driver.execute_script(f"window.scrollBy(0, 500)")
                     time.sleep(1)
@@ -256,7 +247,6 @@ def main():
                 for xp in XPATH_COMMENT_BTNS:
                     btns = driver.find_elements(By.XPATH, xp)
                     if len(btns) > 0:
-                        # Lấy nút đầu tiên tìm thấy
                         for b in btns:
                             if b.is_displayed():
                                 found_btn = b
@@ -264,13 +254,12 @@ def main():
                                 break
                     if found_btn: break
                 
-                # 4. XỬ LÝ LOGIC
                 if found_btn:
                     # --> TÌM THẤY: Bấm vào
                     try:
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                         found_btn.click()
-                        time.sleep(3) # Chờ ô nhập hiện ra
+                        time.sleep(3)
                         
                         # Tìm ô nhập
                         input_box = None
@@ -288,7 +277,20 @@ def main():
                             full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
                             final_content = bien_hinh_van_ban(full_content)
                             
-                            input_box.send_keys(final_content)
+                            print("   + Đang nhập liệu (Dùng JS để tránh lỗi Emoji)...", flush=True)
+                            
+                            # --- [FIX QUAN TRỌNG]: DÙNG JS ĐỂ GỬI EMOJI ---
+                            # Cách này bypass lỗi "BMP characters"
+                            driver.execute_script("""
+                                var elm = arguments[0];
+                                elm.value = arguments[1];
+                                elm.dispatchEvent(new Event('input', { bubbles: true }));
+                                elm.dispatchEvent(new Event('change', { bubbles: true }));
+                            """, input_box, final_content)
+                            
+                            # Gõ thêm dấu cách ảo để kích hoạt nút Gửi
+                            input_box.send_keys(" ") 
+                            
                             time.sleep(2)
                             
                             # Gửi
@@ -297,20 +299,17 @@ def main():
                             print(f"   + ✅ Đã comment thành công!", flush=True)
                             gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
                             
-                            # --> COMMENT XONG MỚI NGỦ DÀI
                             delay = random.randint(600, 900)
                             print(f"   + 💤 Ngủ {delay}s...", flush=True)
                             time.sleep(delay)
                         else:
-                            print("   ! Không thấy ô nhập (Có thể bài bị khóa cmt)", flush=True)
+                            print("   ! Không thấy ô nhập.", flush=True)
                             
                     except Exception as e:
                         print(f"   ! Lỗi thao tác: {e}", flush=True)
                 else:
-                    # --> KHÔNG TÌM THẤY: Lướt tiếp ngay (Ngủ cực ngắn)
                     print("   ! Không thấy nút comment. Thử lại ngay...", flush=True)
-                    # Không gửi ảnh Tele để tránh spam, chỉ log
-                    time.sleep(2) # Nghỉ 2s rồi quay lại đầu vòng lặp (F5 trang mới)
+                    time.sleep(2)
 
             except Exception as e:
                 print(f"❌ Lỗi vòng lặp: {e}", flush=True)
