@@ -2,9 +2,12 @@ import time
 import random
 import os
 import sys
+import requests # Thư viện để gửi tin nhắn Telegram
+import pyotp
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -28,6 +31,32 @@ PRICE_LIST_TEMPLATE = """
 👉 Vào việc ngay tại Bot: @intro_like_bot
 """
 
+# --- HÀM GỬI TELEGRAM ---
+def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
+    try:
+        token = os.environ.get("TELEGRAM_TOKEN")
+        chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+        
+        if not token or not chat_id:
+            print(">>> ⚠️ Chưa cấu hình Telegram Token/Chat ID", flush=True)
+            return
+
+        # 1. Chụp ảnh lưu tạm
+        filename = "temp_screenshot.png"
+        driver.save_screenshot(filename)
+        
+        # 2. Gửi ảnh
+        url = f"https://api.telegram.org/bot{token}/sendPhoto"
+        with open(filename, 'rb') as photo:
+            files = {'photo': photo}
+            data = {'chat_id': chat_id, 'caption': caption}
+            requests.post(url, files=files, data=data)
+            
+        print(f">>> 📡 Đã gửi ảnh về Tele: {caption}", flush=True)
+        
+    except Exception as e:
+        print(f">>> ❌ Lỗi gửi Telegram: {e}", flush=True)
+
 def bien_hinh_van_ban(text):
     confusables = {
         'a': ['a', 'а', 'ạ'], 'o': ['o', 'о', 'ọ'], 'e': ['e', 'е', 'ẹ'],
@@ -43,6 +72,10 @@ def bien_hinh_van_ban(text):
             new_text += char
     return new_text
 
+def get_2fa_code(secret_key):
+    totp = pyotp.TOTP(secret_key.replace(" ", ""))
+    return totp.now()
+
 def setup_driver():
     print(">>> 🛠️ Đang khởi tạo Driver...", flush=True)
     chrome_options = Options()
@@ -51,66 +84,114 @@ def setup_driver():
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
     
-    # Fake User-Agent xịn để Cookie đỡ bị nhả
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1")
-    
     mobile_emulation = { "deviceName": "iPhone X" }
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
     
     return webdriver.Chrome(options=chrome_options)
 
 def main():
-    print(">>> 🚀 BOT KHỞI ĐỘNG (CHẾ ĐỘ COOKIE)...", flush=True)
+    print(">>> 🚀 BOT KHỞI ĐỘNG...", flush=True)
 
-    # Lấy Cookie từ Secret
-    cookie_string = os.environ.get("FB_COOKIE")
-    if not cookie_string:
-        print(">>> ❌ LỖI: Chưa cấu hình Secret 'FB_COOKIE'!", flush=True)
-        return
+    email = os.environ["FB_EMAIL"]
+    password = os.environ["FB_PASS"]
+    key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
     wait = WebDriverWait(driver, 20)
+    
+    # Báo cáo mở máy
+    gui_anh_tele(driver, "🚀 Bot bắt đầu chạy trên GitHub!")
 
     try:
-        # 1. Truy cập trang chủ trước để kích hoạt domain
-        print(">>> 🌐 Đang mở m.facebook.com...", flush=True)
+        print(">>> 📱 Đang truy cập m.facebook.com...", flush=True)
         driver.get("https://m.facebook.com/")
         
-        # 2. Bơm Cookie vào trình duyệt
-        print(">>> 🍪 Đang bơm Cookie...", flush=True)
+        # --- LOGIN ---
+        print(">>> 🔐 Đang nhập thông tin...", flush=True)
+        
         try:
-            # Xử lý chuỗi cookie: "key=value; key=value"
-            for item in cookie_string.split(';'):
-                if '=' in item:
-                    name, value = item.strip().split('=', 1)
-                    driver.add_cookie({
-                        'name': name,
-                        'value': value,
-                        'domain': '.facebook.com',
-                        'path': '/'
-                    })
-            print(">>> ✅ Đã Add Cookie thành công.", flush=True)
+            try:
+                email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
+            except:
+                email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
+            
+            email_box.clear()
+            email_box.send_keys(email)
+            pass_box = driver.find_element(By.NAME, "pass")
+            pass_box.clear()
+            pass_box.send_keys(password)
+            
+            # CHỤP ẢNH SAU KHI ĐIỀN
+            gui_anh_tele(driver, "🔐 Đã điền User/Pass, chuẩn bị bấm Login")
+            
         except Exception as e:
-            print(f">>> ❌ Lỗi khi add cookie: {e}", flush=True)
+            print(f"   ! Lỗi nhập liệu: {e}", flush=True)
+            gui_anh_tele(driver, f"❌ Lỗi không thấy ô nhập: {e}")
 
-        # 3. F5 lại trang để Cookie có hiệu lực
-        print(">>> 🔄 Refresh trang để đăng nhập...", flush=True)
-        driver.get("https://m.facebook.com/")
-        time.sleep(5)
+        # BẤM LOGIN
+        print(">>> 🔎 Đang bấm nút Login...", flush=True)
+        login_success = False
+        login_xpaths = [
+            "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
+            "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']",
+            "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
+            "//input[@value='Log In']", "//input[@type='submit']"
+        ]
 
-        # 4. Kiểm tra xem đã vào được chưa
-        print(">>> 📸 Chụp ảnh kiểm tra Login...", flush=True)
-        driver.save_screenshot("debug_cookie_login.png")
+        for xpath in login_xpaths:
+            try:
+                btn = driver.find_element(By.XPATH, xpath)
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+                time.sleep(1)
+                btn.click()
+                print(f">>> ✅ Đã Click nút: {xpath}", flush=True)
+                login_success = True
+                break
+            except:
+                continue
         
-        # Nếu vẫn thấy nút Đăng nhập hoặc ô Pass -> Cookie chết hoặc IP bị chặn
-        if len(driver.find_elements(By.NAME, "login")) > 0 or len(driver.find_elements(By.NAME, "pass")) > 0:
-            print(">>> ❌ THẤT BẠI: Cookie đã hết hạn hoặc bị Facebook đá ra.", flush=True)
-            print(">>> 🛑 Vui lòng lấy Cookie mới và update lại Secret.", flush=True)
+        if not login_success:
+            print(">>> ⚠️ Thử Enter...", flush=True)
+            try:
+                driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
+            except:
+                pass
+        
+        print(">>> ⏳ Đang chờ 10s...", flush=True)
+        time.sleep(10)
+        
+        # CHỤP ẢNH KẾT QUẢ LOGIN
+        gui_anh_tele(driver, "📸 Kết quả sau khi bấm Login (Check xem vào được chưa?)")
+
+        # --- 2FA ---
+        try:
+            input_code = driver.find_element(By.NAME, "approvals_code")
+            print(">>> 🔥 Phát hiện màn hình 2FA!", flush=True)
+            gui_anh_tele(driver, "🔥 Đang ở màn hình 2FA, đang lấy mã...")
+            
+            otp = get_2fa_code(key_2fa)
+            input_code.send_keys(otp)
+            time.sleep(1)
+            
+            try:
+                driver.find_element(By.XPATH, "//button[@type='submit' or @name='submit[Submit_code]']").click()
+            except:
+                driver.find_element(By.ID, "checkpointSubmitButton").click()
+            
+            time.sleep(8)
+            gui_anh_tele(driver, "✅ Đã nhập xong 2FA")
+        except:
+            pass # Không có 2FA hoặc lỗi
+
+        # --- CHECK LẠI LẦN CUỐI ---
+        if len(driver.find_elements(By.NAME, "pass")) > 0:
+            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI: Vẫn còn ô nhập mật khẩu!")
+            print(">>> 🛑 Dừng Bot.", flush=True)
             return
-        
-        print(">>> ✅ LOGIN THÀNH CÔNG! BẮT ĐẦU ĐI SPAM...", flush=True)
 
-        # --- CODE LƯỚT FEED & SPAM (Giữ nguyên) ---
+        gui_anh_tele(driver, "✅ LOGIN THÀNH CÔNG! Bắt đầu đi spam...")
+
+        # --- SPAM ---
         XPATH_FEED_COMMENT_BTN = "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]"
         XPATH_INPUT = "//textarea[contains(@class, 'internal-input')]"
         XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi')]"
@@ -129,7 +210,6 @@ def main():
                     time.sleep(1)
                 
                 buttons = driver.find_elements(By.XPATH, XPATH_FEED_COMMENT_BTN)
-                print(f"   + Tìm thấy {len(buttons)} nút comment.", flush=True)
                 
                 if len(buttons) > 0:
                     chosen_btn = random.choice(buttons)
@@ -150,18 +230,18 @@ def main():
                         
                         driver.find_element(By.XPATH, XPATH_SEND).click()
                         print(f"   + ✅ Đã comment!", flush=True)
+                        gui_anh_tele(driver, f"✅ Đã Comment thành công (Lượt {count})")
                     except Exception as e:
-                        print(f"   ! Lỗi nhập liệu (Có thể bài viết bị khóa cmt): {e}", flush=True)
+                        gui_anh_tele(driver, f"⚠️ Lỗi nhập comment: {e}")
                 else:
-                    print("   ! Không thấy nút comment (Có thể Newsfeed chưa load).", flush=True)
-                    driver.save_screenshot(f"debug_no_btn_{count}.png")
+                    gui_anh_tele(driver, f"⚠️ Không thấy nút comment (Lượt {count})")
 
                 delay = random.randint(480, 720)
                 print(f"   + 💤 Ngủ {delay}s...", flush=True)
                 time.sleep(delay)
 
             except Exception as e:
-                print(f"❌ Lỗi: {e}", flush=True)
+                gui_anh_tele(driver, f"❌ Lỗi vòng lặp: {e}")
                 time.sleep(60)
 
     finally:
