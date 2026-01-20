@@ -1,20 +1,18 @@
-name: Production_Infrastructure_Monitor # Tên ngụy trang
+name: Production_Infrastructure_Monitor
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # Chạy mỗi 2 giờ
-  workflow_dispatch:      # Cho phép bấm chạy thủ công
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
 
 jobs:
   system-check:
     runs-on: ubuntu-latest
     permissions:
-      actions: write # Cấp quyền để hủy job cũ
+      actions: write
       contents: read
     
     steps:
-      # 1. CƠ CHẾ GỐI ĐẦU (Giữ nguyên)
-      # Tự động hủy các tiến trình cũ bị treo trước khi chạy lượt mới
       - name: Prune Stale Processes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,21 +29,23 @@ jobs:
         with:
           python-version: '3.9'
 
-      # 2. Cài đặt thư viện
-      # Dùng Cookie thì chỉ cần Selenium thôi, không cần pyotp nữa
+      # Cài thêm requests
       - name: Install Dependencies
         run: |
-          pip install selenium
+          pip install selenium pyotp requests
 
-      # 3. Chạy Code Python (Chế độ Cookie)
-      # Đã thay đổi biến môi trường sang FB_COOKIE
+      # Map thêm TELEGRAM_TOKEN và CHAT_ID
       - name: Execute Diagnostics
         env:
-          FB_COOKIE: ${{ secrets.FB_COOKIE }} # <--- QUAN TRỌNG: Nhớ tạo Secret này
+          FB_EMAIL: ${{ secrets.FB_EMAIL }}
+          FB_PASS: ${{ secrets.FB_PASS }}
+          FB_2FA_KEY: ${{ secrets.FB_2FA_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         timeout-minutes: 350
         run: python -u main.py
 
-      # 4. Tự động lưu ảnh lỗi (Luôn chạy dù thành công hay thất bại)
+      # Vẫn giữ cái này để backup
       - name: Upload Error Artifacts
         if: always()
         uses: actions/upload-artifact@v4
