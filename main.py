@@ -83,7 +83,7 @@ def main():
     key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
     gui_anh_tele(driver, "🚀 Bot bắt đầu chạy...")
 
     try:
@@ -129,8 +129,8 @@ def main():
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
         
-        print(">>> ⏳ Chờ 5s...", flush=True)
-        time.sleep(5)
+        print(">>> ⏳ Chờ 15s...", flush=True)
+        time.sleep(15)
         
         # --- XỬ LÝ 2FA & THIẾT BỊ ---
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
