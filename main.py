@@ -2,7 +2,7 @@ import time
 import random
 import os
 import pyotp
-import sys # Import thêm sys để đảm bảo output chuẩn
+import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -63,7 +63,6 @@ def setup_driver():
     return webdriver.Chrome(options=chrome_options)
 
 def main():
-    # In ngay dòng đầu tiên để biết Bot đã chạy
     print(">>> 🚀 BOT KHỞI ĐỘNG...", flush=True)
 
     email = os.environ["FB_EMAIL"]
@@ -78,32 +77,35 @@ def main():
         driver.get("https://m.facebook.com/")
         
         # --- LOGIN ---
-        print(">>> 🔐 Đang nhập thông tin đăng nhập...", flush=True)
+        print(">>> 🔐 Đang nhập thông tin...", flush=True)
         
-        # 1. Nhập Email/Pass
         try:
+            # Tìm ô email (thử nhiều kiểu)
             try:
                 email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
             except:
                 email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
             
+            # Xóa dữ liệu cũ trước khi nhập (Fix lỗi nhập đè)
+            email_box.clear()
             email_box.send_keys(email)
-            driver.find_element(By.NAME, "pass").send_keys(password)
+            
+            pass_box = driver.find_element(By.NAME, "pass")
+            pass_box.clear()
+            pass_box.send_keys(password)
+            
             print("   + Đã điền Email/Pass.", flush=True)
         except Exception as e:
             print(f"   ! Cảnh báo nhập liệu: {e}", flush=True)
 
-        # 2. Tìm & Bấm Nút Login
-        print(">>> 🔎 Đang quét tìm nút Login...", flush=True)
+        # BẤM NÚT LOGIN
+        print(">>> 🔎 Đang bấm nút Login...", flush=True)
         login_success = False
         login_xpaths = [
-            "//span[contains(text(), 'Log in')]", 
-            "//span[contains(text(), 'Log In')]",
-            "//span[contains(text(), 'Đăng nhập')]",
-            "//button[@name='login']",
+            "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
+            "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']",
             "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
-            "//input[@value='Log In']",
-            "//input[@type='submit']"
+            "//input[@value='Log In']", "//input[@type='submit']"
         ]
 
         for xpath in login_xpaths:
@@ -112,54 +114,57 @@ def main():
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
                 time.sleep(1)
                 btn.click()
-                print(f">>> ✅ BINGO! Đã bấm nút Login: {xpath}", flush=True)
+                print(f">>> ✅ Đã Click nút: {xpath}", flush=True)
                 login_success = True
                 break
             except:
                 continue
         
         if not login_success:
-            print(">>> ⚠️ Không thấy nút Login, thử nhấn ENTER...", flush=True)
+            print(">>> ⚠️ Không click được nút nào, thử Enter...", flush=True)
             try:
                 driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
-                login_success = True
             except:
-                print(">>> ❌ Không thể nhấn Enter.", flush=True)
+                pass
         
-        time.sleep(8) 
+        print(">>> ⏳ Đang chờ Facebook phản hồi (10s)...", flush=True)
+        time.sleep(10) # Chờ mạng load
 
-        # --- XỬ LÝ 2FA ---
+        # --- CHECK 2FA ---
         try:
-            print(">>> ⏳ Đang kiểm tra 2FA...", flush=True)
-            input_code = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.NAME, "approvals_code"))
-            )
+            # Kiểm tra xem có ô nhập 2FA không
+            input_code = driver.find_element(By.NAME, "approvals_code")
+            print(">>> 🔥 Phát hiện màn hình 2FA!", flush=True)
             
             otp = get_2fa_code(key_2fa)
-            print(f">>> 🔥 Tìm thấy ô 2FA! Nhập mã: {otp}", flush=True)
+            print(f"   + Mã OTP: {otp}", flush=True)
             input_code.send_keys(otp)
             time.sleep(1)
             
-            xpath_2fa = [
-                "//button[@type='submit']", "//input[@type='submit']",
-                "//button[@id='checkpointSubmitButton']", "//button[@name='submit[Submit_code]']"
-            ]
-            for xp in xpath_2fa:
-                try:
-                    driver.find_element(By.XPATH, xp).click()
-                    print(f">>> Đã bấm gửi 2FA bằng: {xp}", flush=True)
-                    break
-                except:
-                    continue
+            # Bấm gửi 2FA
+            try:
+                driver.find_element(By.XPATH, "//button[@type='submit' or @name='submit[Submit_code]']").click()
+                print("   + Đã bấm gửi mã 2FA.", flush=True)
+            except:
+                driver.find_element(By.ID, "checkpointSubmitButton").click()
             
             time.sleep(8)
-            driver.get("https://m.facebook.com/")
         except:
-            print(">>> 🚀 Vào thẳng (Không cần 2FA hoặc đã login xong).", flush=True)
-        
-        print(">>> ✅ LOGIN HOÀN TẤT. CHẾ ĐỘ: LƯỚT FEED & SPAM...", flush=True)
+            print(">>> ℹ️ Không thấy ô nhập 2FA (Có thể vào thẳng hoặc LOGIN THẤT BẠI).", flush=True)
 
-        # XPATH CẤU HÌNH
+        # --- [QUAN TRỌNG] KIỂM TRA ĐÃ VÀO ĐƯỢC CHƯA ---
+        print(">>> 📸 CHỤP ẢNH MÀN HÌNH ĐỂ DEBUG...", flush=True)
+        driver.save_screenshot("debug_after_login.png")
+        
+        # Nếu vẫn còn thấy ô nhập mật khẩu -> Login thất bại
+        if len(driver.find_elements(By.NAME, "pass")) > 0:
+            print(">>> ❌ CẢNH BÁO: Vẫn thấy ô mật khẩu! Đăng nhập thất bại (Sai pass hoặc bị chặn).", flush=True)
+            print(">>> 🛑 DỪNG BOT. HÃY KIỂM TRA ẢNH 'debug_after_login.png'", flush=True)
+            return
+
+        print(">>> ✅ Kiểm tra sơ bộ OK (Đã qua màn hình Login). Bắt đầu lướt...", flush=True)
+
+        # --- CODE LƯỚT FEED & SPAM ---
         XPATH_FEED_COMMENT_BTN = "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]"
         XPATH_INPUT = "//textarea[contains(@class, 'internal-input')]"
         XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi')]"
@@ -168,74 +173,51 @@ def main():
         while True:
             try:
                 count += 1
-                print(f"\n==========================================", flush=True)
-                print(f"--- 🔄 LƯỢT CHẠY THỨ: {count} ---", flush=True)
-                print(f"==========================================", flush=True)
-                
-                # 1. Làm mới & Cuộn
+                print(f"\n--- 🔄 Lượt {count} ---", flush=True)
                 driver.get("https://m.facebook.com/")
-                time.sleep(random.randint(5, 8))
+                time.sleep(5)
                 
-                scroll_times = random.randint(3, 7)
-                print(f"   + Đang lướt {scroll_times} lần màn hình...", flush=True)
+                scroll_times = random.randint(3, 5)
                 for i in range(scroll_times):
                     driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)})")
-                    time.sleep(random.randint(1, 3))
+                    time.sleep(1)
                 
-                # 2. Tìm nút Comment
-                try:
-                    buttons = driver.find_elements(By.XPATH, XPATH_FEED_COMMENT_BTN)
-                    num_btns = len(buttons)
-                    print(f"   + Tìm thấy {num_btns} nút 'Bình luận' trên màn hình.", flush=True)
+                buttons = driver.find_elements(By.XPATH, XPATH_FEED_COMMENT_BTN)
+                print(f"   + Tìm thấy {len(buttons)} nút comment.", flush=True)
+                
+                if len(buttons) > 0:
+                    chosen_btn = random.choice(buttons)
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_btn)
+                    chosen_btn.click()
+                    time.sleep(3)
                     
-                    if num_btns > 0:
-                        chosen_btn = random.choice(buttons)
-                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_btn)
-                        time.sleep(1)
-                        chosen_btn.click()
-                        print("   + Đã click mở ô bình luận.", flush=True)
-                        time.sleep(3)
-                        
-                        # 3. Nhập & Gửi
-                        print("   + Đang đợi ô nhập hiện ra...", flush=True)
-                        input_box = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_INPUT)))
-                        input_box.click()
-                        
-                        intro = random.choice(INTRO_SENTENCES)
-                        full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
-                        final_content = bien_hinh_van_ban(full_content)
-                        
-                        input_box.send_keys(final_content)
-                        print("   + Đã nhập nội dung (đã biến hình).", flush=True)
-                        time.sleep(2)
-                        
-                        send_btn = driver.find_element(By.XPATH, XPATH_SEND)
-                        send_btn.click()
-                        print(f"   + ✅ ĐÃ COMMENT THÀNH CÔNG!", flush=True)
-                        
-                    else:
-                        print("   ! Không thấy nút comment nào (Có thể do mạng lag hoặc toàn quảng cáo).", flush=True)
-                
-                except Exception as e:
-                    print(f"   ❌ Lỗi thao tác comment: {e}", flush=True)
-                    try:
-                        driver.save_screenshot(f"error_{count}.png")
-                    except:
-                        pass
+                    input_box = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_INPUT)))
+                    input_box.click()
+                    
+                    intro = random.choice(INTRO_SENTENCES)
+                    full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
+                    final_content = bien_hinh_van_ban(full_content)
+                    
+                    input_box.send_keys(final_content)
+                    time.sleep(2)
+                    
+                    driver.find_element(By.XPATH, XPATH_SEND).click()
+                    print(f"   + ✅ Đã comment!", flush=True)
+                else:
+                    print("   ! Không thấy nút comment (Hãy xem ảnh debug).", flush=True)
+                    # Chụp ảnh khi không thấy nút comment để biết tại sao
+                    driver.save_screenshot(f"debug_no_button_{count}.png")
 
-                # 4. NGỦ
                 delay = random.randint(480, 720)
-                print(f"   + 💤 BOT ĐANG NGỦ {delay} GIÂY (~{delay/60:.1f} phút)...", flush=True)
+                print(f"   + 💤 Ngủ {delay}s...", flush=True)
                 time.sleep(delay)
 
             except Exception as e:
-                print(f"❌ LỖI VÒNG LẶP CHÍNH: {e}", flush=True)
-                print("   + Tạm nghỉ 60s rồi thử lại...", flush=True)
+                print(f"❌ Lỗi: {e}", flush=True)
                 time.sleep(60)
 
     finally:
         driver.quit()
-        print(">>> 🛑 DRIVER ĐÃ ĐÓNG.", flush=True)
 
 if __name__ == "__main__":
     main()
