@@ -1,9 +1,9 @@
-name: Production_Infrastructure_Monitor # Tên ngụy trang cho nguy hiểm
+name: Production_Infrastructure_Monitor # Tên ngụy trang
 
 on:
   schedule:
     - cron: '0 */2 * * *' # Chạy mỗi 2 giờ
-  workflow_dispatch:      # Cho phép bấm chạy thủ công để test
+  workflow_dispatch:      # Cho phép bấm chạy thủ công
 
 jobs:
   system-check:
@@ -13,8 +13,8 @@ jobs:
       contents: read
     
     steps:
-      # 1. CƠ CHẾ GỐI ĐẦU (Giữ nguyên theo yêu cầu)
-      # Tác dụng: Tìm các lượt chạy cũ đang treo và hủy nó đi trước khi chạy lượt mới
+      # 1. CƠ CHẾ GỐI ĐẦU (Giữ nguyên)
+      # Tự động hủy các tiến trình cũ bị treo trước khi chạy lượt mới
       - name: Prune Stale Processes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -29,26 +29,23 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9' # Selenium chạy mượt trên 3.9
+          python-version: '3.9'
 
-      # 2. Cài đặt thư viện cho Tool Spam FB
-      # Thay requests/telethon bằng selenium/pyotp
+      # 2. Cài đặt thư viện
+      # Dùng Cookie thì chỉ cần Selenium thôi, không cần pyotp nữa
       - name: Install Dependencies
         run: |
-          pip install selenium pyotp
+          pip install selenium
 
-      # 3. Chạy Code Python
-      # Đã map đúng các biến môi trường cần thiết cho file main.py
+      # 3. Chạy Code Python (Chế độ Cookie)
+      # Đã thay đổi biến môi trường sang FB_COOKIE
       - name: Execute Diagnostics
         env:
-          FB_EMAIL: ${{ secrets.FB_EMAIL }}
-          FB_PASS: ${{ secrets.FB_PASS }}
-          FB_2FA_KEY: ${{ secrets.FB_2FA_KEY }}
-        timeout-minutes: 350 # Giới hạn chạy gần 6 tiếng (để khớp với cơ chế gối đầu)
+          FB_COOKIE: ${{ secrets.FB_COOKIE }} # <--- QUAN TRỌNG: Nhớ tạo Secret này
+        timeout-minutes: 350
         run: python -u main.py
 
-      # 4. (Bonus) Tự động lưu ảnh lỗi nếu tool chết
-      # Giúp bác debug xem tại sao lỗi mà không cần nhìn màn hình
+      # 4. Tự động lưu ảnh lỗi (Luôn chạy dù thành công hay thất bại)
       - name: Upload Error Artifacts
         if: always()
         uses: actions/upload-artifact@v4
