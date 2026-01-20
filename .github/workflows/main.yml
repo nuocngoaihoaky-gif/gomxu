@@ -45,7 +45,7 @@ jobs:
           FB_PASS: ${{ secrets.FB_PASS }}
           FB_2FA_KEY: ${{ secrets.FB_2FA_KEY }}
         timeout-minutes: 350 # Giới hạn chạy gần 6 tiếng (để khớp với cơ chế gối đầu)
-        run: python main.py
+        run: python -u main.py
 
       # 4. (Bonus) Tự động lưu ảnh lỗi nếu tool chết
       # Giúp bác debug xem tại sao lỗi mà không cần nhìn màn hình
