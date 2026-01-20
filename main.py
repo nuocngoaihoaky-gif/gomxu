@@ -23,13 +23,16 @@ INTRO_SENTENCES = [
     "Mới tìm được con bot này hay phết,",
 ]
 
-PRICE_LIST_TEMPLATE = """
+# Phần này SẼ ĐƯỢC biến hình (Né spam)
+PRICE_LIST_BODY = """
 ⭐ BẢNG GIÁ ƯU ĐÃI:
 ✅ 8K = 1.000 Follow Facebook
 ✅ 28K = 1.000 Follow TikTok
 ✅ 3K = 1.000 Tym TikTok
-👉 Auto tăng 24/7 tại Bot TeIe: @intro_like_bot
 """
+
+# Phần này GIỮ NGUYÊN (Để khách tìm được Bot)
+BOT_SIGNATURE = "\n👉 Hệ thống tự động 24/7 tại Bot TeIegram:  @intro_like_bot"
 
 def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     try:
@@ -47,8 +50,8 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
 
 def bien_hinh_van_ban(text):
     confusables = {
-        'a': ['a', 'а', 'ạ'], 'o': ['o', 'о', 'ọ'], 'e': ['e', 'е', 'ẹ'],
-        'i': ['i', 'і', 'ị'], 'l': ['l', 'I', '|'], 'k': ['k', 'κ'],
+        'a': ['a', 'а'], 'o': ['o', 'о'], 'e': ['e', 'е'],
+        'i': ['i', 'і'], 'l': ['l', 'I'], 'k': ['k', 'κ'],
         'B': ['B', 'Β'], 'T': ['T', 'Τ'], 'H': ['H', 'Η'],
         'p': ['p', 'р'], 'c': ['c', 'с'], 'y': ['y', 'у'], 'x': ['x', 'х']
     }
@@ -205,19 +208,18 @@ def main():
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ SPAM...")
 
         # ==========================================
-        #           LOGIC SPAM (FIX LỖI EMOJI BMP)
+        #           LOGIC SPAM (FIX LOGIC TEXT)
         # ==========================================
         
         XPATH_COMMENT_BTNS = [
             "//div[@role='button' and contains(@aria-label, 'comment')]",
             "//div[@role='button' and contains(@aria-label, 'bình luận')]",
-            "//div[@role='button' and contains(., 'Bình luận')]", # Text thuần
-            "//div[@role='button' and contains(., 'Comment')]",   # Text thuần
+            "//div[@role='button' and contains(., 'Bình luận')]",
+            "//div[@role='button' and contains(., 'Comment')]",
             "//span[contains(text(), 'Bình luận')]",
             "//span[contains(text(), 'Comment')]"
         ]
         
-        # Thêm textarea vào selector ô nhập
         XPATH_INPUTS = [
             "//textarea[contains(@class, 'internal-input')]",
             "//textarea[contains(@placeholder, 'Viết bình luận')]",
@@ -255,13 +257,12 @@ def main():
                     if found_btn: break
                 
                 if found_btn:
-                    # --> TÌM THẤY: Bấm vào
+                    # --> TÌM THẤY
                     try:
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                         found_btn.click()
                         time.sleep(3)
                         
-                        # Tìm ô nhập
                         input_box = None
                         for in_xp in XPATH_INPUTS:
                             try:
@@ -273,14 +274,19 @@ def main():
                         
                         if input_box:
                             input_box.click()
+                            
+                            # --- LOGIC MỚI: Tách Username ra khỏi phần biến hình ---
                             intro = random.choice(INTRO_SENTENCES)
-                            full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
-                            final_content = bien_hinh_van_ban(full_content)
                             
-                            print("   + Đang nhập liệu (Dùng JS để tránh lỗi Emoji)...", flush=True)
+                            # 1. Biến hình nội dung spam
+                            spam_content = bien_hinh_van_ban(f"{intro}\n{PRICE_LIST_BODY}")
                             
-                            # --- [FIX QUAN TRỌNG]: DÙNG JS ĐỂ GỬI EMOJI ---
-                            # Cách này bypass lỗi "BMP characters"
+                            # 2. Ghép với Username gốc (Không biến hình)
+                            final_content = f"{spam_content}{BOT_SIGNATURE}"
+                            
+                            print("   + Đang nhập liệu (JS Injection)...", flush=True)
+                            
+                            # Dùng JS để nhập (Hỗ trợ Emoji + Tiếng Việt)
                             driver.execute_script("""
                                 var elm = arguments[0];
                                 elm.value = arguments[1];
@@ -288,16 +294,13 @@ def main():
                                 elm.dispatchEvent(new Event('change', { bubbles: true }));
                             """, input_box, final_content)
                             
-                            # Gõ thêm dấu cách ảo để kích hoạt nút Gửi
                             input_box.send_keys(" ") 
-                            
                             time.sleep(2)
                             
-                            # Gửi
                             driver.find_element(By.XPATH, XPATH_SEND).click()
                             
                             print(f"   + ✅ Đã comment thành công!", flush=True)
-                            gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
+                            gui_anh_tele(driver, f"✅ Đã Comment: {final_content[:30]}...")
                             
                             delay = random.randint(600, 900)
                             print(f"   + 💤 Ngủ {delay}s...", flush=True)
