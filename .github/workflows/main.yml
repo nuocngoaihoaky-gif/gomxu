@@ -1,0 +1,57 @@
+name: Production_Infrastructure_Monitor # Tên ngụy trang cho nguy hiểm
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # Chạy mỗi 2 giờ
+  workflow_dispatch:      # Cho phép bấm chạy thủ công để test
+
+jobs:
+  system-check:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # Cấp quyền để hủy job cũ
+      contents: read
+    
+    steps:
+      # 1. CƠ CHẾ GỐI ĐẦU (Giữ nguyên theo yêu cầu)
+      # Tác dụng: Tìm các lượt chạy cũ đang treo và hủy nó đi trước khi chạy lượt mới
+      - name: Prune Stale Processes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          runs=$(gh run list --repo ${{ github.repository }} --status in_progress --json databaseId --jq ".[] | select(.databaseId != ${{ github.run_id }}) | .databaseId")
+          for run_id in $runs; do
+            echo "Killing stale run: $run_id"
+            gh run cancel $run_id --repo ${{ github.repository }}
+          done
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9' # Selenium chạy mượt trên 3.9
+
+      # 2. Cài đặt thư viện cho Tool Spam FB
+      # Thay requests/telethon bằng selenium/pyotp
+      - name: Install Dependencies
+        run: |
+          pip install selenium pyotp
+
+      # 3. Chạy Code Python
+      # Đã map đúng các biến môi trường cần thiết cho file main.py
+      - name: Execute Diagnostics
+        env:
+          FB_EMAIL: ${{ secrets.FB_EMAIL }}
+          FB_PASS: ${{ secrets.FB_PASS }}
+          FB_2FA_KEY: ${{ secrets.FB_2FA_KEY }}
+        timeout-minutes: 350 # Giới hạn chạy gần 6 tiếng (để khớp với cơ chế gối đầu)
+        run: python main.py
+
+      # 4. (Bonus) Tự động lưu ảnh lỗi nếu tool chết
+      # Giúp bác debug xem tại sao lỗi mà không cần nhìn màn hình
+      - name: Upload Error Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: "*.png"
