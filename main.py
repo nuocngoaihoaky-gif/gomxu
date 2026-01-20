@@ -72,10 +72,8 @@ def setup_driver():
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=375,812") 
-    
     mobile_emulation = { "deviceName": "iPhone X" }
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
-    
     return webdriver.Chrome(options=chrome_options)
 
 def main():
@@ -135,21 +133,12 @@ def main():
         print(">>> ⏳ Chờ 15s...", flush=True)
         time.sleep(15)
         
-        # =================================================================
-        # XỬ LÝ 2 TÌNH HUỐNG (CASE 1: DUYỆT THIẾT BỊ | CASE 2: NHẬP CODE)
-        # =================================================================
+        # --- XỬ LÝ 2 TÌNH HUỐNG (CASE 1: DUYỆT THIẾT BỊ | CASE 2: NHẬP CODE) ---
+        print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
         
-        print(">>> 🕵️ Kiểm tra xem rơi vào trường hợp nào...", flush=True)
-        
-        # --- CASE 1: BẮT DUYỆT THIẾT BỊ (TRY ANOTHER WAY) ---
+        # CASE 1: BẮT DUYỆT THIẾT BỊ
         try_btn = None
-        try_xpaths = [
-            "//div[@role='button' and contains(., 'Try another way')]", # Chuẩn ảnh bác gửi
-            "//div[@role='button' and contains(., 'Thử cách khác')]",
-            "//span[contains(text(), 'Try another way')]",
-            "//button[contains(., 'Try another way')]"
-        ]
-        
+        try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
         for xp in try_xpaths:
             try:
                 if len(driver.find_elements(By.XPATH, xp)) > 0:
@@ -158,61 +147,34 @@ def main():
             except: continue
             
         if try_btn:
-            print(">>> ⚠️ PHÁT HIỆN: Bị chặn thiết bị cũ -> Bấm 'Try another way'", flush=True)
-            gui_anh_tele(driver, "⚠️ Bị chặn thiết bị. Đang xử lý 'Try another way'...")
-            
-            # 1. Bấm 'Try another way'
+            print(">>> ⚠️ Bấm 'Try another way'", flush=True)
+            gui_anh_tele(driver, "⚠️ Bấm 'Try another way'...")
             try_btn.click()
             time.sleep(3)
             
-            # 2. Chọn 'Authentication app' (Dựa trên ảnh bác gửi: role='radio')
-            print(">>> 📱 Chọn 'Authentication app'...", flush=True)
-            auth_app_xpaths = [
-                "//div[@role='radio' and contains(@aria-label, 'Authentication app')]", # XPath chuẩn từ ảnh soi code
-                "//div[@role='radio' and contains(@aria-label, 'Ứng dụng xác thực')]",
-                "//span[contains(text(), 'Authentication app')]",
-                "//div[contains(., 'Authentication app')]"
-            ]
-            
-            auth_clicked = False
+            # Chọn Auth App
+            auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
             for axp in auth_app_xpaths:
                 try:
                     driver.find_element(By.XPATH, axp).click()
-                    auth_clicked = True
-                    print(f">>> ✅ Đã tick chọn Auth App: {axp}", flush=True)
                     break
                 except: continue
-            
             time.sleep(2)
             
-            # 3. Bấm Continue (Dựa trên ảnh bác gửi: role='button', aria-label='Continue')
-            print(">>> ➡️ Bấm Continue...", flush=True)
-            continue_xpaths = [
-                "//div[@role='button' and @aria-label='Continue']",
-                "//div[@role='button' and @aria-label='Tiếp tục']",
-                "//button[contains(., 'Continue')]"
-            ]
+            # Bấm Continue
+            continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
             for cxp in continue_xpaths:
                 try:
                     driver.find_element(By.XPATH, cxp).click()
-                    print(f">>> ✅ Đã bấm Continue: {cxp}", flush=True)
                     break
                 except: continue
-                
-            time.sleep(5) # Chờ nó chuyển sang màn hình nhập code
-        
-        else:
-            print(">>> ℹ️ Không thấy nút 'Try another way' -> Có thể là màn hình nhập code luôn.", flush=True)
+            time.sleep(5)
 
-        # --- CASE 2: NHẬP CODE 2FA (Chạy tiếp cho cả 2 trường hợp trên) ---
-        print(">>> 🕵️ Tìm ô nhập 2FA...", flush=True)
+        # CASE 2: NHẬP CODE
         fa_input = None
-        
-        # Quét ô nhập
         try:
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
-                # Ô 2FA thường là type number hoặc tel
                 if inp.get_attribute("type") in ["tel", "number"]:
                     fa_input = inp
                     break
@@ -229,40 +191,42 @@ def main():
         if fa_input:
             otp = get_2fa_code(key_2fa)
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
-            gui_anh_tele(driver, f"🔥 Đang nhập OTP: {otp}")
-            
+            gui_anh_tele(driver, f"🔥 Nhập OTP: {otp}")
             fa_input.click()
             fa_input.send_keys(otp)
             time.sleep(2)
             
-            # Bấm Tiếp tục/Submit
-            submit_xpaths = [
-                "//div[@role='button' and @aria-label='Continue']", # Nút Continue ở màn hình 2FA
-                "//div[@role='button' and @aria-label='Tiếp tục']",
-                "//button[@type='submit']", 
-                "//button[@id='checkpointSubmitButton']"
-            ]
+            submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
             for btn_xp in submit_xpaths:
                 try:
                     driver.find_element(By.XPATH, btn_xp).click()
                     break
                 except: continue
-            
-            fa_input.send_keys(Keys.ENTER) # Enter bồi thêm
+            fa_input.send_keys(Keys.ENTER)
             time.sleep(10)
-        else:
-             # Nếu không thấy ô nhập 2FA mà cũng không thấy nút Try another way -> Có thể đã Login thành công từ trước?
-             gui_anh_tele(driver, "⚠️ Không thấy ô 2FA (Có thể đã vào thẳng?)")
 
         # --- CHECK THÀNH CÔNG ---
         if len(driver.find_elements(By.NAME, "pass")) > 0:
-            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI: Vẫn ở trang Login!")
+            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI!")
             return
 
-        gui_anh_tele(driver, "✅ LOGIN THÀNH CÔNG! Đi spam...")
+        gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ SPAM...")
 
-        # --- SPAM ---
-        XPATH_FEED_COMMENT_BTN = "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]"
+        # ==========================================
+        #           LOGIC SPAM THÔNG MINH
+        # ==========================================
+        
+        # Danh sách tìm nút comment mở rộng (cả nút text lẫn link)
+        XPATH_COMMENT_BTNS = [
+            "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]",
+            "//span[contains(text(), 'Bình luận')]",
+            "//span[contains(text(), 'Comment')]",
+            "//div[@aria-label='Bình luận']",
+            "//div[@aria-label='Comment']",
+            "//a[contains(., 'Bình luận')]", # Link
+            "//a[contains(., 'Comment')]"
+        ]
+        
         XPATH_INPUT = "//textarea[contains(@class, 'internal-input')]"
         XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi')]"
 
@@ -270,24 +234,38 @@ def main():
         while True:
             try:
                 count += 1
-                print(f"\n--- 🔄 Lượt {count} ---", flush=True)
+                print(f"\n--- 🔄 Lượt quét {count} ---", flush=True)
+                
+                # 1. Làm mới trang
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
-                scroll_times = random.randint(3, 5)
+                # 2. Lướt ngẫu nhiên để tìm bài
+                scroll_times = random.randint(3, 6)
                 for i in range(scroll_times):
-                    driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)})")
+                    driver.execute_script(f"window.scrollBy(0, {random.randint(400, 800)})")
                     time.sleep(1)
                 
-                buttons = driver.find_elements(By.XPATH, XPATH_FEED_COMMENT_BTN)
+                # 3. Tìm nút Comment
+                found_btn = None
+                for xp in XPATH_COMMENT_BTNS:
+                    btns = driver.find_elements(By.XPATH, xp)
+                    if len(btns) > 0:
+                        # Chọn nút hiển thị rõ trên màn hình
+                        for b in btns:
+                            if b.is_displayed():
+                                found_btn = b
+                                break
+                    if found_btn: break
                 
-                if len(buttons) > 0:
-                    chosen_btn = random.choice(buttons)
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_btn)
-                    chosen_btn.click()
-                    time.sleep(3)
-                    
+                # 4. XỬ LÝ LOGIC NGỦ
+                if found_btn:
+                    # --> TÌM THẤY: Comment xong thì ngủ dài
                     try:
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
+                        found_btn.click()
+                        time.sleep(3)
+                        
                         input_box = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_INPUT)))
                         input_box.click()
                         
@@ -299,20 +277,32 @@ def main():
                         time.sleep(2)
                         
                         driver.find_element(By.XPATH, XPATH_SEND).click()
-                        print(f"   + ✅ Đã comment!", flush=True)
+                        
+                        print(f"   + ✅ Đã comment thành công!", flush=True)
                         gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
+                        
+                        # NGỦ DÀI (10 - 15 phút) vì đã comment
+                        delay = random.randint(600, 900)
+                        print(f"   + 💤 Nhiệm vụ hoàn thành. Ngủ {delay}s...", flush=True)
+                        time.sleep(delay)
+                        
                     except Exception as e:
-                        gui_anh_tele(driver, f"⚠️ Lỗi nhập: {e}")
+                        print(f"   ! Lỗi thao tác: {e}", flush=True)
+                        time.sleep(5) # Lỗi thì đợi xíu rồi lướt tiếp
                 else:
-                    gui_anh_tele(driver, f"⚠️ Không thấy nút comment (Lượt {count})")
-
-                delay = random.randint(480, 720)
-                print(f"   + 💤 Ngủ {delay}s...", flush=True)
-                time.sleep(delay)
+                    # --> KHÔNG TÌM THẤY: Ngủ ngắn rồi thử lại ngay
+                    print("   ! Không thấy nút comment nào khả dụng.", flush=True)
+                    # Chụp ảnh xem nó đang nhìn thấy cái gì mà ko có nút
+                    if count % 5 == 0: # Cứ 5 lần fail thì báo tele 1 lần cho đỡ spam
+                        gui_anh_tele(driver, f"⚠️ Lượt {count}: Không tìm thấy nút Comment")
+                    
+                    # NGỦ NGẮN (5 - 10 giây) để lướt tiếp
+                    print("   + ⏩ Thử lại ngay sau 10s...", flush=True)
+                    time.sleep(10)
 
             except Exception as e:
-                gui_anh_tele(driver, f"❌ Lỗi vòng lặp: {e}")
-                time.sleep(60)
+                print(f"❌ Lỗi vòng lặp: {e}", flush=True)
+                time.sleep(30)
 
     finally:
         driver.quit()
