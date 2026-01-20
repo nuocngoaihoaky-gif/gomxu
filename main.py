@@ -71,9 +71,6 @@ def setup_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    
-    # --- FIX LỖI MÀN HÌNH TRẮNG ---
-    # Ép buộc kích thước cửa sổ để không bị lỗi render 0x0
     chrome_options.add_argument("--window-size=375,812") 
     
     mobile_emulation = { "deviceName": "iPhone X" }
@@ -88,7 +85,7 @@ def main():
     key_2fa = os.environ["FB_2FA_KEY"]
 
     driver = setup_driver()
-    wait = WebDriverWait(driver, 30) # Tăng time chờ lên 30s
+    wait = WebDriverWait(driver, 30)
     gui_anh_tele(driver, "🚀 Bot bắt đầu chạy...")
 
     try:
@@ -111,8 +108,8 @@ def main():
         except Exception as e:
             gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
 
-        # BẤM LOGIN (Sửa lại logic: Bấm được là thôi, không Enter nữa)
-        print(">>> 🔎 Đang bấm nút Login...", flush=True)
+        # BẤM LOGIN
+        print(">>> 🔎 Bấm nút Login...", flush=True)
         login_clicked = False
         login_xpaths = [
             "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
@@ -126,44 +123,103 @@ def main():
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
                 time.sleep(1)
                 btn.click()
-                print(f">>> ✅ Đã bấm nút: {xpath}", flush=True)
                 login_clicked = True
                 break
             except:
                 continue
         
-        # Chỉ Enter nếu chưa bấm được nút nào (Tránh spam lệnh làm trắng trang)
         if not login_clicked:
-            print(">>> ⚠️ Thử Enter...", flush=True)
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
         
-        print(">>> ⏳ Chờ 15s để load trang 2FA...", flush=True)
-        time.sleep(15) # Tăng time chờ load
+        print(">>> ⏳ Chờ 15s...", flush=True)
+        time.sleep(15)
         
-        # --- XỬ LÝ 2FA ---
-        print(">>> 🕵️ Đang quét màn hình 2FA...", flush=True)
+        # =================================================================
+        # XỬ LÝ 2 TÌNH HUỐNG (CASE 1: DUYỆT THIẾT BỊ | CASE 2: NHẬP CODE)
+        # =================================================================
         
-        # Thử tìm ô nhập bằng nhiều cách
+        print(">>> 🕵️ Kiểm tra xem rơi vào trường hợp nào...", flush=True)
+        
+        # --- CASE 1: BẮT DUYỆT THIẾT BỊ (TRY ANOTHER WAY) ---
+        try_btn = None
+        try_xpaths = [
+            "//div[@role='button' and contains(., 'Try another way')]", # Chuẩn ảnh bác gửi
+            "//div[@role='button' and contains(., 'Thử cách khác')]",
+            "//span[contains(text(), 'Try another way')]",
+            "//button[contains(., 'Try another way')]"
+        ]
+        
+        for xp in try_xpaths:
+            try:
+                if len(driver.find_elements(By.XPATH, xp)) > 0:
+                    try_btn = driver.find_element(By.XPATH, xp)
+                    break
+            except: continue
+            
+        if try_btn:
+            print(">>> ⚠️ PHÁT HIỆN: Bị chặn thiết bị cũ -> Bấm 'Try another way'", flush=True)
+            gui_anh_tele(driver, "⚠️ Bị chặn thiết bị. Đang xử lý 'Try another way'...")
+            
+            # 1. Bấm 'Try another way'
+            try_btn.click()
+            time.sleep(3)
+            
+            # 2. Chọn 'Authentication app' (Dựa trên ảnh bác gửi: role='radio')
+            print(">>> 📱 Chọn 'Authentication app'...", flush=True)
+            auth_app_xpaths = [
+                "//div[@role='radio' and contains(@aria-label, 'Authentication app')]", # XPath chuẩn từ ảnh soi code
+                "//div[@role='radio' and contains(@aria-label, 'Ứng dụng xác thực')]",
+                "//span[contains(text(), 'Authentication app')]",
+                "//div[contains(., 'Authentication app')]"
+            ]
+            
+            auth_clicked = False
+            for axp in auth_app_xpaths:
+                try:
+                    driver.find_element(By.XPATH, axp).click()
+                    auth_clicked = True
+                    print(f">>> ✅ Đã tick chọn Auth App: {axp}", flush=True)
+                    break
+                except: continue
+            
+            time.sleep(2)
+            
+            # 3. Bấm Continue (Dựa trên ảnh bác gửi: role='button', aria-label='Continue')
+            print(">>> ➡️ Bấm Continue...", flush=True)
+            continue_xpaths = [
+                "//div[@role='button' and @aria-label='Continue']",
+                "//div[@role='button' and @aria-label='Tiếp tục']",
+                "//button[contains(., 'Continue')]"
+            ]
+            for cxp in continue_xpaths:
+                try:
+                    driver.find_element(By.XPATH, cxp).click()
+                    print(f">>> ✅ Đã bấm Continue: {cxp}", flush=True)
+                    break
+                except: continue
+                
+            time.sleep(5) # Chờ nó chuyển sang màn hình nhập code
+        
+        else:
+            print(">>> ℹ️ Không thấy nút 'Try another way' -> Có thể là màn hình nhập code luôn.", flush=True)
+
+        # --- CASE 2: NHẬP CODE 2FA (Chạy tiếp cho cả 2 trường hợp trên) ---
+        print(">>> 🕵️ Tìm ô nhập 2FA...", flush=True)
         fa_input = None
         
-        # Cách 1: Tìm ô input có type='number' hoặc 'tel' (Thường là ô 2FA)
+        # Quét ô nhập
         try:
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
+                # Ô 2FA thường là type number hoặc tel
                 if inp.get_attribute("type") in ["tel", "number"]:
                     fa_input = inp
                     break
         except: pass
 
-        # Cách 2: Tìm theo placeholder hoặc name
         if not fa_input:
-            fa_xpaths = [
-                "//input[@name='approvals_code']",
-                "//input[@placeholder='Code']", 
-                "//input[@placeholder='Mã']",
-                "//input[@aria-label='Code']"
-            ]
+            fa_xpaths = ["//input[@name='approvals_code']", "//input[@placeholder='Code']", "//input[@aria-label='Code']"]
             for xp in fa_xpaths:
                 try:
                     fa_input = driver.find_element(By.XPATH, xp)
@@ -172,18 +228,16 @@ def main():
 
         if fa_input:
             otp = get_2fa_code(key_2fa)
-            gui_anh_tele(driver, f"🔥 Tìm thấy ô 2FA! Nhập: {otp}")
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
+            gui_anh_tele(driver, f"🔥 Đang nhập OTP: {otp}")
             
             fa_input.click()
             fa_input.send_keys(otp)
             time.sleep(2)
             
-            # Tìm nút Tiếp tục
-            print(">>> 🕵️ Bấm Tiếp tục...", flush=True)
-            submit_success = False
+            # Bấm Tiếp tục/Submit
             submit_xpaths = [
-                "//div[@role='button' and @aria-label='Continue']",
+                "//div[@role='button' and @aria-label='Continue']", # Nút Continue ở màn hình 2FA
                 "//div[@role='button' and @aria-label='Tiếp tục']",
                 "//button[@type='submit']", 
                 "//button[@id='checkpointSubmitButton']"
@@ -191,30 +245,16 @@ def main():
             for btn_xp in submit_xpaths:
                 try:
                     driver.find_element(By.XPATH, btn_xp).click()
-                    submit_success = True
                     break
                 except: continue
             
-            if not submit_success: fa_input.send_keys(Keys.ENTER)
-            
+            fa_input.send_keys(Keys.ENTER) # Enter bồi thêm
             time.sleep(10)
-            gui_anh_tele(driver, "📸 Sau khi nhập 2FA")
         else:
-            # NẾU KHÔNG THẤY Ô NHẬP -> IN RA HTML ĐỂ BIẾT TRANG GÌ
-            print(">>> ⚠️ KHÔNG THẤY Ô 2FA. ĐANG Ở TRANG NÀO?", flush=True)
-            try:
-                # In tiêu đề và nội dung trang web ra log để đọc
-                page_title = driver.title
-                page_body = driver.find_element(By.TAG_NAME, "body").text[:500] # Lấy 500 chữ đầu
-                print(f"   + Title: {page_title}", flush=True)
-                print(f"   + Body Text: {page_body}", flush=True)
-                
-                gui_anh_tele(driver, f"⚠️ Lỗi tìm ô 2FA. Web hiện chữ: {page_body[:100]}...")
-            except:
-                pass
+             # Nếu không thấy ô nhập 2FA mà cũng không thấy nút Try another way -> Có thể đã Login thành công từ trước?
+             gui_anh_tele(driver, "⚠️ Không thấy ô 2FA (Có thể đã vào thẳng?)")
 
         # --- CHECK THÀNH CÔNG ---
-        # Kiểm tra xem có bị đá về Login không
         if len(driver.find_elements(By.NAME, "pass")) > 0:
             gui_anh_tele(driver, "❌ LOGIN THẤT BẠI: Vẫn ở trang Login!")
             return
