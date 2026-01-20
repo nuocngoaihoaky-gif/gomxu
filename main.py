@@ -97,7 +97,6 @@ def main():
                 email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
             except:
                 email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
-            
             email_box.clear()
             email_box.send_keys(email)
             pass_box = driver.find_element(By.NAME, "pass")
@@ -133,10 +132,11 @@ def main():
         print(">>> ⏳ Chờ 15s...", flush=True)
         time.sleep(15)
         
-        # --- XỬ LÝ 2 TÌNH HUỐNG (CASE 1: DUYỆT THIẾT BỊ | CASE 2: NHẬP CODE) ---
+        # --- XỬ LÝ 2FA & THIẾT BỊ ---
+        # (Giữ nguyên logic xử lý 2FA đã chạy ổn)
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
         
-        # CASE 1: BẮT DUYỆT THIẾT BỊ
+        # CASE 1: TRY ANOTHER WAY
         try_btn = None
         try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
         for xp in try_xpaths:
@@ -147,12 +147,8 @@ def main():
             except: continue
             
         if try_btn:
-            print(">>> ⚠️ Bấm 'Try another way'", flush=True)
-            gui_anh_tele(driver, "⚠️ Bấm 'Try another way'...")
             try_btn.click()
             time.sleep(3)
-            
-            # Chọn Auth App
             auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
             for axp in auth_app_xpaths:
                 try:
@@ -160,8 +156,6 @@ def main():
                     break
                 except: continue
             time.sleep(2)
-            
-            # Bấm Continue
             continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
             for cxp in continue_xpaths:
                 try:
@@ -195,7 +189,6 @@ def main():
             fa_input.click()
             fa_input.send_keys(otp)
             time.sleep(2)
-            
             submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
             for btn_xp in submit_xpaths:
                 try:
@@ -213,22 +206,34 @@ def main():
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ SPAM...")
 
         # ==========================================
-        #           LOGIC SPAM THÔNG MINH
+        #           LOGIC SPAM (ĐÃ FIX SELECTOR)
         # ==========================================
         
-        # Danh sách tìm nút comment mở rộng (cả nút text lẫn link)
+        # 1. Selector Tìm Nút Bình Luận (Dựa trên ảnh bác gửi)
+        # Bắt buộc phải dùng @aria-label vì text hiển thị chỉ là số
         XPATH_COMMENT_BTNS = [
-            "//div[@role='button' and (contains(., 'Bình luận') or contains(., 'Comment'))]",
-            "//span[contains(text(), 'Bình luận')]",
-            "//span[contains(text(), 'Comment')]",
-            "//div[@aria-label='Bình luận']",
-            "//div[@aria-label='Comment']",
-            "//a[contains(., 'Bình luận')]", # Link
-            "//a[contains(., 'Comment')]"
+            # Dạng: aria-label="5 comments" hoặc "1 bình luận"
+            "//div[@role='button' and contains(@aria-label, 'comment')]",
+            "//div[@role='button' and contains(@aria-label, 'bình luận')]",
+            
+            # Dạng Link (nếu có)
+            "//a[contains(., 'comment')]",
+            "//a[contains(., 'bình luận')]",
+            
+            # Dự phòng: Tìm cái nút nằm ngay cạnh nút Like
+            "//div[@aria-label='Like']/following-sibling::div[@role='button']"
         ]
         
-        XPATH_INPUT = "//textarea[contains(@class, 'internal-input')]"
-        XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi')]"
+        # 2. Selector Ô Nhập Liệu
+        # Tìm textarea có placeholder hoặc class đặc trưng
+        XPATH_INPUTS = [
+            "//textarea[contains(@class, 'internal-input')]",
+            "//textarea[contains(@placeholder, 'Viết bình luận')]",
+            "//textarea[contains(@placeholder, 'Write a comment')]",
+            "//div[@role='textbox']" # Trường hợp nó là div editable
+        ]
+
+        XPATH_SEND = "//div[@role='button' and (@aria-label='Post a comment' or @aria-label='Đăng bình luận' or @aria-label='Gửi' or @aria-label='Post')]"
 
         count = 0
         while True:
@@ -236,73 +241,80 @@ def main():
                 count += 1
                 print(f"\n--- 🔄 Lượt quét {count} ---", flush=True)
                 
-                # 1. Làm mới trang
+                # 1. Làm mới trang (Vào trang chủ để thấy bài mới)
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
-                # 2. Lướt ngẫu nhiên để tìm bài
-                scroll_times = random.randint(3, 6)
-                for i in range(scroll_times):
-                    driver.execute_script(f"window.scrollBy(0, {random.randint(400, 800)})")
+                # 2. Lướt tìm bài
+                # Lướt 3 phát để load vài bài
+                for i in range(3):
+                    driver.execute_script(f"window.scrollBy(0, 500)")
                     time.sleep(1)
                 
-                # 3. Tìm nút Comment
+                # 3. Quét tìm nút Comment
                 found_btn = None
                 for xp in XPATH_COMMENT_BTNS:
                     btns = driver.find_elements(By.XPATH, xp)
                     if len(btns) > 0:
-                        # Chọn nút hiển thị rõ trên màn hình
+                        # Lấy nút đầu tiên tìm thấy
                         for b in btns:
                             if b.is_displayed():
                                 found_btn = b
+                                print(f"   + Tìm thấy nút: {xp}", flush=True)
                                 break
                     if found_btn: break
                 
-                # 4. XỬ LÝ LOGIC NGỦ
+                # 4. XỬ LÝ LOGIC
                 if found_btn:
-                    # --> TÌM THẤY: Comment xong thì ngủ dài
+                    # --> TÌM THẤY: Bấm vào
                     try:
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                         found_btn.click()
-                        time.sleep(3)
+                        time.sleep(3) # Chờ ô nhập hiện ra
                         
-                        input_box = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_INPUT)))
-                        input_box.click()
+                        # Tìm ô nhập
+                        input_box = None
+                        for in_xp in XPATH_INPUTS:
+                            try:
+                                box = wait.until(EC.presence_of_element_located((By.XPATH, in_xp)))
+                                if box.is_displayed():
+                                    input_box = box
+                                    break
+                            except: continue
                         
-                        intro = random.choice(INTRO_SENTENCES)
-                        full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
-                        final_content = bien_hinh_van_ban(full_content)
-                        
-                        input_box.send_keys(final_content)
-                        time.sleep(2)
-                        
-                        driver.find_element(By.XPATH, XPATH_SEND).click()
-                        
-                        print(f"   + ✅ Đã comment thành công!", flush=True)
-                        gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
-                        
-                        # NGỦ DÀI (10 - 15 phút) vì đã comment
-                        delay = random.randint(600, 900)
-                        print(f"   + 💤 Nhiệm vụ hoàn thành. Ngủ {delay}s...", flush=True)
-                        time.sleep(delay)
-                        
+                        if input_box:
+                            input_box.click()
+                            intro = random.choice(INTRO_SENTENCES)
+                            full_content = f"{intro}\n{PRICE_LIST_TEMPLATE}"
+                            final_content = bien_hinh_van_ban(full_content)
+                            
+                            input_box.send_keys(final_content)
+                            time.sleep(2)
+                            
+                            # Gửi
+                            driver.find_element(By.XPATH, XPATH_SEND).click()
+                            
+                            print(f"   + ✅ Đã comment thành công!", flush=True)
+                            gui_anh_tele(driver, f"✅ Đã Comment (Lượt {count})")
+                            
+                            # --> COMMENT XONG MỚI NGỦ DÀI
+                            delay = random.randint(600, 900)
+                            print(f"   + 💤 Ngủ {delay}s...", flush=True)
+                            time.sleep(delay)
+                        else:
+                            print("   ! Không thấy ô nhập (Có thể bài bị khóa cmt)", flush=True)
+                            
                     except Exception as e:
                         print(f"   ! Lỗi thao tác: {e}", flush=True)
-                        time.sleep(5) # Lỗi thì đợi xíu rồi lướt tiếp
                 else:
-                    # --> KHÔNG TÌM THẤY: Ngủ ngắn rồi thử lại ngay
-                    print("   ! Không thấy nút comment nào khả dụng.", flush=True)
-                    # Chụp ảnh xem nó đang nhìn thấy cái gì mà ko có nút
-                    if count % 5 == 0: # Cứ 5 lần fail thì báo tele 1 lần cho đỡ spam
-                        gui_anh_tele(driver, f"⚠️ Lượt {count}: Không tìm thấy nút Comment")
-                    
-                    # NGỦ NGẮN (5 - 10 giây) để lướt tiếp
-                    print("   + ⏩ Thử lại ngay sau 10s...", flush=True)
-                    time.sleep(10)
+                    # --> KHÔNG TÌM THẤY: Lướt tiếp ngay (Ngủ cực ngắn)
+                    print("   ! Không thấy nút comment. Thử lại ngay...", flush=True)
+                    # Không gửi ảnh Tele để tránh spam, chỉ log
+                    time.sleep(2) # Nghỉ 2s rồi quay lại đầu vòng lặp (F5 trang mới)
 
             except Exception as e:
                 print(f"❌ Lỗi vòng lặp: {e}", flush=True)
-                time.sleep(30)
+                time.sleep(10)
 
     finally:
         driver.quit()
