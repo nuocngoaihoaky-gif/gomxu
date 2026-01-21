@@ -122,22 +122,36 @@ def human_scroll(driver, distance):
             time.sleep(random.uniform(0.5, 1.5))
 
 def setup_driver():
-    print(">>> 🛠️ Đang khởi tạo Driver (Anti-Detect + Human Mode)...", flush=True)
+    print(">>> 🛠️ Đang khởi tạo Driver (Fixed Mobile Emulation)...", flush=True)
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=375,812") 
+    
+    # Anti-Detect cơ bản
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    
+    # --- PHẦN SỬA LỖI QUAN TRỌNG Ở ĐÂY ---
+    # User-Agent xịn mà bác muốn dùng
     ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
-    chrome_options.add_argument(f'--user-agent={ua}')
-    mobile_emulation = { "deviceName": "iPhone X", "userAgent": ua }
+    
+    # Thay vì dùng 'deviceName', ta tự khai báo cấu hình màn hình (iPhone X/11/12/13/14 dòng Pro đều cỡ này)
+    mobile_emulation = {
+        "deviceMetrics": { "width": 375, "height": 812, "pixelRatio": 3.0 },
+        "userAgent": ua
+    }
+    
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
+    # --------------------------------------
+
     driver = webdriver.Chrome(options=chrome_options)
+    
+    # Xóa dấu vết WebDriver
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     return driver
 
 # ==============================================================================
