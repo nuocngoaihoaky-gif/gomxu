@@ -60,7 +60,7 @@ def gen_price(): return "\n".join(random.choice(PRICE_BLOCKS))
 def gen_cta(bot="@intro_like_bot"): return random.choice(CTA_LINES).format(bot=bot)
 
 # ==============================================================================
-# 2. CÁC HÀM HỖ TRỢ (UPDATE: HUMAN SCROLL)
+# 2. CÁC HÀM HỖ TRỢ
 # ==============================================================================
 
 def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
@@ -76,7 +76,7 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     except: pass
 
 def bien_hinh_van_ban(text):
-    confusables = {'a': ['а'], 'o': ['о'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
+    confusables = {'a': ['а'], 'o': ['о'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'l': ['I'], 'I': ['l'], 'P': ['Р'], 'X': ['Х']}
     new_text = ""
     for char in text:
         if char in confusables: new_text += random.choice(confusables[char])
@@ -95,67 +95,56 @@ def get_sleep_time_smart():
         print("   🌙 Đêm rồi, ngủ 2-3 tiếng...", flush=True)
         return random.randint(7200, 10800) 
     else:
-        # Ban ngày: Ngủ 35p - 60p (Tăng tốc độ một xíu vì đã có Human Scroll bù lại độ trust)
         return random.randint(2100, 3600)
 
-# --- 🔥 NEW: HÀM CUỘN MƯỢT NHƯ TAY NGƯỜI (HUMAN SCROLL) ---
 def human_scroll(driver, distance):
-    """
-    Giả lập hành động vuốt ngón tay:
-    - Không cuộn 1 phát hết luôn.
-    - Cuộn từng đoạn nhỏ (step).
-    - Có độ trễ ngẫu nhiên giữa các step.
-    """
     current_scroll = 0
-    step_size = random.randint(30, 60) # Mỗi lần vuốt 30-60px
-    
+    step_size = random.randint(30, 60)
     while current_scroll < distance:
-        # Random độ trễ cực nhỏ (giả lập ngón tay di chuyển)
         time.sleep(random.uniform(0.01, 0.05)) 
-        
-        # Vuốt
         driver.execute_script(f"window.scrollBy(0, {step_size})")
         current_scroll += step_size
-        
-        # Đôi khi dừng lại 1 tí như đang đọc (xác suất 5%)
         if random.random() < 0.05:
             time.sleep(random.uniform(0.5, 1.5))
 
 def setup_driver():
-    print(">>> 🛠️ Đang khởi tạo Driver (Fixed Mobile Emulation)...", flush=True)
+    print(">>> 🛠️ Đang khởi tạo Driver (Profile: Việt Kiều Mỹ)...", flush=True)
     chrome_options = Options()
+    
+    # --- CẤU HÌNH ---
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-notifications")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=375,812")
     
-    # Anti-Detect cơ bản
+    # --- 🔥 ÉP TIẾNG VIỆT ---
+    chrome_options.add_argument("--lang=vi-VN")
+    
+    # --- ANTI-DETECT ---
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     
-    # --- PHẦN SỬA LỖI QUAN TRỌNG Ở ĐÂY ---
-    # User-Agent xịn mà bác muốn dùng
+    # --- CỐ ĐỊNH THIẾT BỊ (User-Agent xịn, KHÔNG dùng deviceName) ---
     ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
-    
-    # Thay vì dùng 'deviceName', ta tự khai báo cấu hình màn hình (iPhone X/11/12/13/14 dòng Pro đều cỡ này)
     mobile_emulation = {
         "deviceMetrics": { "width": 375, "height": 812, "pixelRatio": 3.0 },
         "userAgent": ua
     }
-    
     chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
-    # --------------------------------------
-
+    
     driver = webdriver.Chrome(options=chrome_options)
     
-    # Xóa dấu vết WebDriver
+    # --- FAKE TIMEZONE VN & XÓA DẤU VẾT ---
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    params = { "timezoneId": "Asia/Ho_Chi_Minh" }
+    driver.execute_cdp_cmd("Emulation.setTimezoneOverride", params)
     
     return driver
 
 # ==============================================================================
-# 3. TƯƠNG TÁC DẠO (DÙNG HUMAN SCROLL)
+# 3. TƯƠNG TÁC DẠO (HỖ TRỢ CẢ ANH VÀ VIỆT)
 # ==============================================================================
 def tuong_tac_dao(driver):
     print("\n--- 🤸 BẮT ĐẦU CHẾ ĐỘ 'ĐI DẠO' ---", flush=True)
@@ -164,14 +153,24 @@ def tuong_tac_dao(driver):
         interacted = False
         for i in range(scroll_times):
             
-            # 🔥 DÙNG HUMAN SCROLL THAY VÌ SCROLLBY CŨ
+            # Human Scroll
             dist = random.randint(500, 800)
             human_scroll(driver, dist)
-            
             time.sleep(random.randint(2, 4))
             
+            # Logic: Chỉ tương tác 1 lần, xác suất 40%
             if not interacted and random.random() > 0.6:
-                main_like_xpaths = ["//div[@role='button' and contains(@aria-label, 'like')]", "//div[@role='button' and contains(@aria-label, 'Like')]", "//div[@role='button' and contains(@aria-label, 'thích')]", "//div[@role='button' and contains(@aria-label, 'Thích')]"]
+                
+                # --- [UPDATE] BỘ TỪ KHÓA CHUẨN CẢ ANH LẪN VIỆT ---
+                main_like_xpaths = [
+                    # Tiếng Việt (Thường gặp khi ép lang=vi)
+                    "//div[@role='button' and contains(@aria-label, 'Thích')]", 
+                    "//div[@role='button' and contains(@aria-label, 'thích')]",
+                    # Tiếng Anh (Backup)
+                    "//div[@role='button' and contains(@aria-label, 'Like')]",
+                    "//div[@role='button' and contains(@aria-label, 'like')]"
+                ]
+                
                 found_btn = None
                 for xp in main_like_xpaths:
                     btns = driver.find_elements(By.XPATH, xp)
@@ -183,30 +182,51 @@ def tuong_tac_dao(driver):
                 if found_btn:
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                     time.sleep(1)
-                    if random.random() > 0.5: # Thả tim
+                    
+                    # 50% Thả Tim (Nhấn giữ), 50% Like thường
+                    if random.random() > 0.5: 
                         try:
                             actions = ActionChains(driver)
                             actions.move_to_element(found_btn).click_and_hold().perform()
                             time.sleep(2) 
-                            reaction_xpaths = ["//div[@role='button' and @aria-label='Love']", "//div[@role='button' and @aria-label='Yêu thích']", "//div[@role='button' and @aria-label='Care']", "//div[@role='button' and @aria-label='Thương thương']", "//div[@role='button' and @aria-label='Haha']"]
+                            
+                            # --- [UPDATE] NÚT CẢM XÚC TIẾNG VIỆT CHUẨN ---
+                            reaction_xpaths = [
+                                # Tiếng Việt
+                                "//div[@role='button' and @aria-label='Yêu thích']", 
+                                "//div[@role='button' and @aria-label='Thương thương']",
+                                "//div[@role='button' and @aria-label='Haha']",
+                                "//div[@role='button' and @aria-label='Wow']",
+                                "//div[@role='button' and @aria-label='Buồn']",
+                                # Tiếng Anh
+                                "//div[@role='button' and @aria-label='Love']", 
+                                "//div[@role='button' and @aria-label='Care']",
+                                "//div[@role='button' and @aria-label='Sad']"
+                            ]
+                            
                             visible_reacts = []
                             for rxp in reaction_xpaths:
                                 r_btns = driver.find_elements(By.XPATH, rxp)
                                 for r in r_btns:
                                     if r.is_displayed(): visible_reacts.append(r)
+                            
                             if len(visible_reacts) > 0:
-                                random.choice(visible_reacts).click()
+                                chosen = random.choice(visible_reacts)
+                                react_type = chosen.get_attribute("aria-label")
+                                chosen.click()
                                 actions.release().perform()
-                                print(f"   + 😍 Đã thả cảm xúc!", flush=True)
+                                print(f"   + 😍 Đã thả cảm xúc: {react_type}", flush=True)
                                 interacted = True
                             else:
                                 actions.release().perform()
-                                found_btn.click()
+                                found_btn.click() # Không thấy bảng thì like thường
                                 interacted = True
                         except: pass
                     else: 
                         try:
-                            found_btn.click(); print("   + 👍 Đã Like thường.", flush=True); interacted = True
+                            found_btn.click()
+                            print("   + 👍 Đã Like thường.", flush=True)
+                            interacted = True
                         except: pass
     except Exception as e: print(f"   ! Lỗi đi dạo: {e}", flush=True)
     print("--- ✅ KẾT THÚC ĐI DẠO ---\n", flush=True)
@@ -223,33 +243,21 @@ def main():
     wait = WebDriverWait(driver, 30)
 
     try:
+        # --- LOGIN ---
         print(">>> 📱 Vào Facebook...", flush=True)
         driver.get("https://m.facebook.com/")
-        
-        # --- LOGIN ---
         print(">>> 🔐 Nhập User/Pass...", flush=True)
         try:
-            try:
-                email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
-            except:
-                email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
-            email_box.clear()
-            email_box.send_keys(email)
+            try: email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
+            except: email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
+            email_box.clear(); email_box.send_keys(email)
             pass_box = driver.find_element(By.NAME, "pass")
-            pass_box.clear()
-            pass_box.send_keys(password)
-        except Exception as e:
-            gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
+            pass_box.clear(); pass_box.send_keys(password)
+        except Exception as e: gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
 
-        # BẤM LOGIN
         print(">>> 🔎 Bấm nút Login...", flush=True)
         login_clicked = False
-        login_xpaths = [
-            "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
-            "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']",
-            "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
-            "//input[@value='Log In']", "//input[@type='submit']"
-        ]
+        login_xpaths = ["//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']", "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]", "//input[@value='Log In']", "//input[@type='submit']"]
         for xpath in login_xpaths:
             try:
                 btn = driver.find_element(By.XPATH, xpath)
@@ -258,86 +266,58 @@ def main():
                 btn.click()
                 login_clicked = True
                 break
-            except:
-                continue
-        
+            except: continue
         if not login_clicked:
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
-        
-        print(">>> ⏳ Chờ 15s...", flush=True)
         time.sleep(15)
-        
-        # --- XỬ LÝ 2FA & THIẾT BỊ ---
+
+        # --- 2FA LOGIC ---
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
-        
-        # CASE 1: TRY ANOTHER WAY
         try_btn = None
         try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
         for xp in try_xpaths:
             try:
                 if len(driver.find_elements(By.XPATH, xp)) > 0:
-                    try_btn = driver.find_element(By.XPATH, xp)
-                    break
+                    try_btn = driver.find_element(By.XPATH, xp); break
             except: continue
             
         if try_btn:
-            try_btn.click()
-            time.sleep(3)
+            try_btn.click(); time.sleep(3)
             auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
             for axp in auth_app_xpaths:
-                try:
-                    driver.find_element(By.XPATH, axp).click()
-                    break
+                try: driver.find_element(By.XPATH, axp).click(); break
                 except: continue
             time.sleep(2)
             continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
             for cxp in continue_xpaths:
-                try:
-                    driver.find_element(By.XPATH, cxp).click()
-                    break
+                try: driver.find_element(By.XPATH, cxp).click(); break
                 except: continue
             time.sleep(5)
 
-        # CASE 2: NHẬP CODE
         fa_input = None
         try:
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
-                if inp.get_attribute("type") in ["tel", "number"]:
-                    fa_input = inp
-                    break
+                if inp.get_attribute("type") in ["tel", "number"]: fa_input = inp; break
         except: pass
-
         if not fa_input:
             fa_xpaths = ["//input[@name='approvals_code']", "//input[@placeholder='Code']", "//input[@aria-label='Code']"]
             for xp in fa_xpaths:
-                try:
-                    fa_input = driver.find_element(By.XPATH, xp)
-                    break
+                try: fa_input = driver.find_element(By.XPATH, xp); break
                 except: continue
 
         if fa_input:
             otp = get_2fa_code(key_2fa)
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
             gui_anh_tele(driver, f"🔥 Nhập OTP: {otp}")
-            fa_input.click()
-            fa_input.send_keys(otp)
-            time.sleep(2)
+            fa_input.click(); fa_input.send_keys(otp); time.sleep(2)
             submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
             for btn_xp in submit_xpaths:
-                try:
-                    driver.find_element(By.XPATH, btn_xp).click()
-                    break
+                try: driver.find_element(By.XPATH, btn_xp).click(); break
                 except: continue
-            fa_input.send_keys(Keys.ENTER)
-            time.sleep(10)
-
-        # --- CHECK THÀNH CÔNG ---
-        if len(driver.find_elements(By.NAME, "pass")) > 0:
-            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI!")
-            return
-
+            fa_input.send_keys(Keys.ENTER); time.sleep(10)
+        
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ HUMAN SCROLL...")
 
         # ==========================================
@@ -357,9 +337,10 @@ def main():
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
-                # 1. ĐI DẠO (Có Human Scroll)
+                # 1. ĐI DẠO
                 tuong_tac_dao(driver)
 
+                # 2. LAZY MODE
                 if random.random() < 0.2:
                     print(">>> 😴 LAZY MODE: Ngủ...", flush=True)
                     delay = get_sleep_time_smart()
@@ -367,12 +348,10 @@ def main():
                     time.sleep(delay)
                     continue
 
-                # 2. TÌM BÀI COMMENT
+                # 3. TÌM BÀI COMMENT
                 found_btn = None
                 for i in range(2): 
-                    # 🔥 DÙNG HUMAN SCROLL ĐỂ LƯỚT TÌM BÀI
                     human_scroll(driver, random.randint(500, 700))
-                    
                     time.sleep(2)
                     for xp in XPATH_COMMENT_BTNS:
                         btns = driver.find_elements(By.XPATH, xp)
