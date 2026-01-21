@@ -223,8 +223,6 @@ def main():
     wait = WebDriverWait(driver, 30)
 
     try:
-        # --- LOGIN ---
-         try:
         print(">>> 📱 Vào Facebook...", flush=True)
         driver.get("https://m.facebook.com/")
         
