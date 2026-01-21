@@ -224,20 +224,34 @@ def main():
 
     try:
         # --- LOGIN ---
+         try:
         print(">>> 📱 Vào Facebook...", flush=True)
         driver.get("https://m.facebook.com/")
+        
+        # --- LOGIN ---
         print(">>> 🔐 Nhập User/Pass...", flush=True)
         try:
-            try: email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
-            except: email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
-            email_box.clear(); email_box.send_keys(email)
+            try:
+                email_box = wait.until(EC.presence_of_element_located((By.NAME, "email")))
+            except:
+                email_box = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
+            email_box.clear()
+            email_box.send_keys(email)
             pass_box = driver.find_element(By.NAME, "pass")
-            pass_box.clear(); pass_box.send_keys(password)
-        except Exception as e: gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
+            pass_box.clear()
+            pass_box.send_keys(password)
+        except Exception as e:
+            gui_anh_tele(driver, f"❌ Lỗi điền form: {e}")
 
+        # BẤM LOGIN
         print(">>> 🔎 Bấm nút Login...", flush=True)
         login_clicked = False
-        login_xpaths = ["//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']", "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]", "//input[@value='Log In']", "//input[@type='submit']"]
+        login_xpaths = [
+            "//span[contains(text(), 'Log in')]", "//span[contains(text(), 'Log In')]", 
+            "//span[contains(text(), 'Đăng nhập')]", "//button[@name='login']",
+            "//div[@role='button' and (contains(., 'Log In') or contains(., 'Đăng nhập'))]",
+            "//input[@value='Log In']", "//input[@type='submit']"
+        ]
         for xpath in login_xpaths:
             try:
                 btn = driver.find_element(By.XPATH, xpath)
@@ -246,16 +260,86 @@ def main():
                 btn.click()
                 login_clicked = True
                 break
-            except: continue
+            except:
+                continue
+        
         if not login_clicked:
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
-        time.sleep(15)
-
-        # (Đoạn 2FA cũ giữ nguyên, để ngắn gọn tôi không paste lại, bác nhớ giữ nhé)
-        # CASE 1 & CASE 2 2FA HERE...
-        # ...
         
+        print(">>> ⏳ Chờ 15s...", flush=True)
+        time.sleep(15)
+        
+        # --- XỬ LÝ 2FA & THIẾT BỊ ---
+        print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
+        
+        # CASE 1: TRY ANOTHER WAY
+        try_btn = None
+        try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
+        for xp in try_xpaths:
+            try:
+                if len(driver.find_elements(By.XPATH, xp)) > 0:
+                    try_btn = driver.find_element(By.XPATH, xp)
+                    break
+            except: continue
+            
+        if try_btn:
+            try_btn.click()
+            time.sleep(3)
+            auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
+            for axp in auth_app_xpaths:
+                try:
+                    driver.find_element(By.XPATH, axp).click()
+                    break
+                except: continue
+            time.sleep(2)
+            continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
+            for cxp in continue_xpaths:
+                try:
+                    driver.find_element(By.XPATH, cxp).click()
+                    break
+                except: continue
+            time.sleep(5)
+
+        # CASE 2: NHẬP CODE
+        fa_input = None
+        try:
+            inputs = driver.find_elements(By.TAG_NAME, "input")
+            for inp in inputs:
+                if inp.get_attribute("type") in ["tel", "number"]:
+                    fa_input = inp
+                    break
+        except: pass
+
+        if not fa_input:
+            fa_xpaths = ["//input[@name='approvals_code']", "//input[@placeholder='Code']", "//input[@aria-label='Code']"]
+            for xp in fa_xpaths:
+                try:
+                    fa_input = driver.find_element(By.XPATH, xp)
+                    break
+                except: continue
+
+        if fa_input:
+            otp = get_2fa_code(key_2fa)
+            print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
+            gui_anh_tele(driver, f"🔥 Nhập OTP: {otp}")
+            fa_input.click()
+            fa_input.send_keys(otp)
+            time.sleep(2)
+            submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
+            for btn_xp in submit_xpaths:
+                try:
+                    driver.find_element(By.XPATH, btn_xp).click()
+                    break
+                except: continue
+            fa_input.send_keys(Keys.ENTER)
+            time.sleep(10)
+
+        # --- CHECK THÀNH CÔNG ---
+        if len(driver.find_elements(By.NAME, "pass")) > 0:
+            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI!")
+            return
+
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ HUMAN SCROLL...")
 
         # ==========================================
