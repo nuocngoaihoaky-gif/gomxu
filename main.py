@@ -15,7 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # ==============================================================================
-# 1. KHO TÀNG CONTENT (GIỮ NGUYÊN)
+# 1. KHO TÀNG CONTENT
 # ==============================================================================
 INTRO_STRUCTURES = [
     "{d} đang cần {a} {c} {b} thì ghé bên mình nhé.",
@@ -76,7 +76,7 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     except: pass
 
 def bien_hinh_van_ban(text):
-    confusables = {'a': ['а'], 'o': ['о'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'l': ['I'], 'I': ['l'], 'P': ['Р'], 'X': ['Х']}
+    confusables = {'a': ['а'], 'o': ['о'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
     new_text = ""
     for char in text:
         if char in confusables: new_text += random.choice(confusables[char])
@@ -95,9 +95,12 @@ def get_sleep_time_smart():
         print("   🌙 Đêm rồi, ngủ 2-3 tiếng...", flush=True)
         return random.randint(7200, 10800) 
     else:
-        return random.randint(2100, 3600)
+        # TEST MODE: Ngủ ngắn lại để bác đỡ phải chờ (10-15 phút)
+        # Khi nào chạy thật thì chỉnh lại sau
+        return random.randint(600, 900) 
 
 def human_scroll(driver, distance):
+    print("   + 📜 Đang lướt Newsfeed...", flush=True) # IN RA LOG ĐỂ BÁC THẤY
     current_scroll = 0
     step_size = random.randint(30, 60)
     while current_scroll < distance:
@@ -126,7 +129,7 @@ def setup_driver():
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     
-    # --- CỐ ĐỊNH THIẾT BỊ (User-Agent xịn, KHÔNG dùng deviceName) ---
+    # --- CỐ ĐỊNH THIẾT BỊ ---
     ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
     mobile_emulation = {
         "deviceMetrics": { "width": 375, "height": 812, "pixelRatio": 3.0 },
@@ -144,7 +147,7 @@ def setup_driver():
     return driver
 
 # ==============================================================================
-# 3. TƯƠNG TÁC DẠO (HỖ TRỢ CẢ ANH VÀ VIỆT)
+# 3. TƯƠNG TÁC DẠO (AGGRESSIVE MODE)
 # ==============================================================================
 def tuong_tac_dao(driver):
     print("\n--- 🤸 BẮT ĐẦU CHẾ ĐỘ 'ĐI DẠO' ---", flush=True)
@@ -158,15 +161,12 @@ def tuong_tac_dao(driver):
             human_scroll(driver, dist)
             time.sleep(random.randint(2, 4))
             
-            # Logic: Chỉ tương tác 1 lần, xác suất 40%
-            if not interacted and random.random() > 0.6:
+            # Logic: Tăng tỷ lệ tương tác lên 60%
+            if not interacted and random.random() > 0.4:
                 
-                # --- [UPDATE] BỘ TỪ KHÓA CHUẨN CẢ ANH LẪN VIỆT ---
                 main_like_xpaths = [
-                    # Tiếng Việt (Thường gặp khi ép lang=vi)
                     "//div[@role='button' and contains(@aria-label, 'Thích')]", 
                     "//div[@role='button' and contains(@aria-label, 'thích')]",
-                    # Tiếng Anh (Backup)
                     "//div[@role='button' and contains(@aria-label, 'Like')]",
                     "//div[@role='button' and contains(@aria-label, 'like')]"
                 ]
@@ -183,22 +183,19 @@ def tuong_tac_dao(driver):
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                     time.sleep(1)
                     
-                    # 50% Thả Tim (Nhấn giữ), 50% Like thường
-                    if random.random() > 0.5: 
+                    # 🔥 [TEST] Tăng tỷ lệ Thả Tim lên 80% (0.2) thay vì 50% (0.5)
+                    if random.random() > 0.2: 
                         try:
                             actions = ActionChains(driver)
                             actions.move_to_element(found_btn).click_and_hold().perform()
                             time.sleep(2) 
                             
-                            # --- [UPDATE] NÚT CẢM XÚC TIẾNG VIỆT CHUẨN ---
                             reaction_xpaths = [
-                                # Tiếng Việt
                                 "//div[@role='button' and @aria-label='Yêu thích']", 
                                 "//div[@role='button' and @aria-label='Thương thương']",
                                 "//div[@role='button' and @aria-label='Haha']",
                                 "//div[@role='button' and @aria-label='Wow']",
                                 "//div[@role='button' and @aria-label='Buồn']",
-                                # Tiếng Anh
                                 "//div[@role='button' and @aria-label='Love']", 
                                 "//div[@role='button' and @aria-label='Care']",
                                 "//div[@role='button' and @aria-label='Sad']"
@@ -232,7 +229,7 @@ def tuong_tac_dao(driver):
     print("--- ✅ KẾT THÚC ĐI DẠO ---\n", flush=True)
 
 # ==============================================================================
-# 4. MAIN LOOP
+# 4. MAIN LOOP (AGGRESSIVE MODE: NO LAZY)
 # ==============================================================================
 def main():
     print(">>> 🚀 BOT KHỞI ĐỘNG...", flush=True)
@@ -340,13 +337,13 @@ def main():
                 # 1. ĐI DẠO
                 tuong_tac_dao(driver)
 
-                # 2. LAZY MODE
-                if random.random() < 0.2:
-                    print(">>> 😴 LAZY MODE: Ngủ...", flush=True)
-                    delay = get_sleep_time_smart()
-                    print(f"   + 💤 Ngủ {delay}s...", flush=True)
-                    time.sleep(delay)
-                    continue
+                # 🔥 [TEST] TẮT LAZY MODE: Luôn luôn comment
+                # if random.random() < 0.2:
+                #     print(">>> 😴 LAZY MODE: Ngủ...", flush=True)
+                #     delay = get_sleep_time_smart()
+                #     print(f"   + 💤 Ngủ {delay}s...", flush=True)
+                #     time.sleep(delay)
+                #     continue
 
                 # 3. TÌM BÀI COMMENT
                 found_btn = None
