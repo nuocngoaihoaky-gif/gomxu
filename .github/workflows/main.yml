@@ -2,21 +2,27 @@ name: Production_Infrastructure_Monitor
 
 on:
   schedule:
+    # Chạy mỗi 2 tiếng (0h, 2h, 4h...) để bù trừ thời gian chờ Queue của GitHub
     - cron: '0 */2 * * *'
+  # Cho phép bấm chạy tay khi cần test
   workflow_dispatch:
 
 jobs:
   system-check:
     runs-on: ubuntu-latest
+    # Cấp quyền ghi để có thể Kill job cũ (Quan trọng)
     permissions:
       actions: write
       contents: read
     
     steps:
+      # 1. CHIẾN THUẬT "DỌN ĐƯỜNG": Tìm và diệt các Job cũ đang treo hoặc đang chạy
+      # Để đảm bảo chỉ có duy nhất 1 con Bot hoạt động, tránh xung đột IP/Session
       - name: Prune Stale Processes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Lấy danh sách các run đang chạy (in_progress) trừ run hiện tại ra
           runs=$(gh run list --repo ${{ github.repository }} --status in_progress --json databaseId --jq ".[] | select(.databaseId != ${{ github.run_id }}) | .databaseId")
           for run_id in $runs; do
             echo "Killing stale run: $run_id"
@@ -29,12 +35,12 @@ jobs:
         with:
           python-version: '3.9'
 
-      # Cài thêm requests
+      # 2. CÀI ĐẶT THƯ VIỆN (Đã thêm pytz)
       - name: Install Dependencies
         run: |
-          pip install selenium pyotp requests
+          pip install selenium pyotp requests pytz
 
-      # Map thêm TELEGRAM_TOKEN và CHAT_ID
+      # 3. CHẠY BOT
       - name: Execute Diagnostics
         env:
           FB_EMAIL: ${{ secrets.FB_EMAIL }}
@@ -42,10 +48,11 @@ jobs:
           FB_2FA_KEY: ${{ secrets.FB_2FA_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        # Set timeout 350p (5h50p) để sát giới hạn 6h của GitHub
         timeout-minutes: 350
         run: python -u main.py
 
-      # Vẫn giữ cái này để backup
+      # 4. CHỤP ẢNH LỖI (Nếu bot sập bất ngờ thì có ảnh để soi)
       - name: Upload Error Artifacts
         if: always()
         uses: actions/upload-artifact@v4
