@@ -15,10 +15,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # ==============================================================================
-# 1. KHO TÀNG CONTENT (V14: GIÁ CẢ RÕ RÀNG - KHÔNG GÂY HIỂU LẦM)
+# 1. KHO TÀNG CONTENT (V16: AN TOÀN TUYỆT ĐỐI)
 # ==============================================================================
 INTRO_STRUCTURES = [
-    # --- NHÓM 1: CÂU GỐC (Trực diện) ---
     "{d} đang cần {a} {c} {b} thì ghé bên mình nhé.",
     "Bên mình chuyên {a} các gói {c} {b} nhất thị trường.",
     "Mách nhỏ {d} chỗ {a} {c} cực kỳ {b} đây.",
@@ -29,8 +28,6 @@ INTRO_STRUCTURES = [
     "Xả kho {c} giá hủy diệt, {a} ngay trong ngày.",
     "Chuyên cung cấp {c} cho các shop, cam kết {b}.",
     "Hỗ trợ {d} xây dựng kênh với gói {c} siêu tiết kiệm.",
-
-    # --- NHÓM 2: TRENDY ---
     "U là trời, {d} nào đang cần {a} {c} {b} thì bơi hết vào đây nha.",
     "Sơ hở là {a} {c}, đảm bảo {b} hết nước chấm cho {d}.",
     "Ét o ét! {d} ơi, bên mình đang {a} gói {c} siêu {b} nè.",
@@ -39,8 +36,6 @@ INTRO_STRUCTURES = [
     "Mlem mlem, bảng giá {c} bên em bao {b}, nhìn là muốn chốt.",
     "Gét gô! Cùng {a} {c} để lên xu hướng nào {d} ơi.",
     "Xin vía tương tác! Bác nào cần {a} {c} thì chấm (.) em báo giá.",
-    
-    # --- NHÓM 3: GIỌNG THÂN THIỆN ---
     "{d} cần làm {c} cho kênh nhìn đỡ trống không ạ?",
     "Ai đang lo vụ {c} thì bên mình có giải pháp {b} nhé.",
     "Chia sẻ nhẹ cho {d} nào đang bí {c}.",
@@ -52,8 +47,6 @@ INTRO_STRUCTURES = [
     "Ai quan tâm {c} thì em để info bên dưới nhé.",
     "Bác nào tò mò về {c} {b} có thể tham khảo thử.",
     "Chia sẻ để {d} nào cần thì dùng, không ép nhé.",
-    
-    # --- NHÓM 4: CÂU HỎI GỢI MỞ ---
     "{d} có đang gặp khó khi làm {c} không?",
     "Có ai từng đau đầu vì thiếu {c} chưa?",
     "{d} nào cần cải thiện {c} trong thời gian ngắn không?",
@@ -67,47 +60,26 @@ INTRO_WORDS = {
     "d": ["Anh em", "Bác nào", "Shop nào", "Chế nào", "Chủ shop", "Mấy ní", "Các sếp", "Ae thiện lành", "Mọi người"]
 }
 
-# --- 🔥 UPDATE: ĐƠN VỊ TÍNH RÕ RÀNG (/1K) ---
 PRICE_BLOCKS = [
-    # Mẫu 1
     ["🔥 BẢNG GIÁ LẺ:", "✅ Sub Face: 8k/1.000 sub", "✅ Follow Tik: 28k/1.000 fl", "✅ Tim Tik: 3k/1.000 tim"],
-    # Mẫu 2
     ["⚡ FLASH SALE:", "🔸 1k Sub Phở Bò = 8 cành", "🔸 1k Fl TikTok = 28 cành", "🔸 1k Tym TikTok = 3 cành"],
-    # Mẫu 3
     ["💎 SERVICE LIST:", "🔹 FB Follow >> 8k/1k", "🔹 Tik Follow >> 28k/1k", "🔹 Tik Heart >> 3k/1k"],
-    # Mẫu 4
     ["🌟 DEAL HOT:", "+ Sub Face 8k/k", "+ Fl Tik 28k/k", "+ Tim Tik 3k/k"],
-    # Mẫu 5
     ["🚀 COMBO:", "✔️ Sub xanh: 8.000đ/1k", "✔️ Fl TikTok: 28.000đ/1k", "✔️ Tim TikTok: 3.000đ/1k"],
-    # Mẫu 6
     ["📦 GIÁ XƯỞNG:", "- Follow FB: 8k/1000", "- Follow TT: 28k/1000", "- Like TT: 3k/1000"],
-    # Mẫu 7
     ["✨ UPDATE GIÁ: Sub FB 8k/1k | Fl Tik 28k/1k | Tim Tik 3k/1k. Bao tụt."],
-    # Mẫu 8
     ["❤️ BẢNG GIÁ:", "★ 1k Theo dõi FB: 8k xu", "★ 1k Follow Tik: 28k xu", "★ 1k Tim video: 3k xu"],
-    # Mẫu 9
     ["🔥 HOT: Sub FB chỉ 8k/1k - Follow Tik 28k/1k - Tim 3k/1k. BH trọn đời."],
-    # Mẫu 10
     ["📌 MENU:", "➡️ Sub Phở Bò: 8k/1k", "➡️ Fl Tóp Tóp: 28k/1k", "➡️ Tim Tóp Tóp: 3k/1k"],
-    # Mẫu 11
     ["Gửi bác báo giá (Gói 1000):", "1. Sub Face 8k", "2. Follow Tik 28k", "3. Tim Tik 3k"],
-    # Mẫu 12
     ["⭐ GIÁ NIÊM YẾT ⭐", "▪️ FB Follow: 8k/1k", "▪️ TT Follow: 28k/1k", "▪️ TT Like: 3k/1k"],
-    # Mẫu 13
     ["[ UPDATE PRICE ]", "• Sub FB: 8k/1.000", "• Fl Tik: 28k/1.000", "• Tim Tik: 3k/1.000"],
-    # Mẫu 14
     ["✨ 𝐒𝐄𝐑𝐕𝐈𝐂𝐄 ✨", "👉 Sub Face: 8k/1k", "👉 Fl Tik: 28k/1k", "👉 Tim Tik: 3k/1k"],
-    # Mẫu 15
     ["Báo giá nhanh:", "Face: 8k/1k sub", "Tik: 28k/1k fl", "Tik: 3k/1k tim"],
-    # Mẫu 16
     ["💰 Bảng giá:", "💵 Sub FB: 8k/1k", "💵 Fl Tik: 28k/1k", "💵 Tim: 3k/1k"],
-    # Mẫu 17
     ["- FB Follow: 8.000đ/1k", "- TT Follow: 28.000đ/1k", "- TT Heart: 3.000đ/1k"],
-    # Mẫu 18
     ["🔥 DEAL SỐC:", "🔸 Sub FB: 8ca/1k", "🔸 Fl Tik: 28ca/1k", "🔸 Tim: 3ca/1k"],
-    # Mẫu 19
     ["✨ Dịch vụ hot:", "Sub Face >> 8k/1k", "Fl Tik >> 28k/1k", "Tim Tik >> 3k/1k"],
-    # Mẫu 20
     ["Giá cực yêu: Tăng 1000 follow fb 8k, tăng 1000 follow tiktok 28k, tăng 1000 tim 3k."]
 ]
 
@@ -139,15 +111,36 @@ CTA_LINES = [
     "👉 Xử lý nhanh tại Tele: {bot}.",
 ]
 
+# ==============================================================================
+# 2. CÁC HÀM HỖ TRỢ (QUAN TRỌNG: BIẾN HÌNH CHỮ)
+# ==============================================================================
+
+def bien_hinh_van_ban(text):
+    # Thay thế ký tự Latin bằng Cyrillic (Nga/Đông Âu) nhìn y hệt
+    confusables = {'a': ['а'], 'o': ['о'], 'I': ['l'], 'l': ['I'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
+    new_text = ""
+    for char in text:
+        if char in confusables: new_text += random.choice(confusables[char])
+        else: new_text += char
+    return new_text
+
+# --- 🔥 HÀM TẠO CTA THÔNG MINH (CHỈ BIẾN HÌNH CHỮ TELEGRAM, GIỮ NGUYÊN USERNAME) ---
+def gen_cta(bot="@intro_like_bot"):
+    raw_template = random.choice(CTA_LINES)
+    # Tách câu ra làm đôi dựa vào chỗ điền {bot}
+    parts = raw_template.split("{bot}")
+    
+    # Chỉ chạy biến hình văn bản cho phần Lời dẫn (VD: "👉 Search Tele: ")
+    # Để chữ "Tele", "Telegram" bị đổi mã, tránh FB quét
+    obfuscated_parts = [bien_hinh_van_ban(p) for p in parts]
+    
+    # Ghép lại với username SẠCH (Không biến hình username để khách tìm được)
+    return "{bot}".join(obfuscated_parts).format(bot=bot)
+
 def gen_intro():
     s = random.choice(INTRO_STRUCTURES)
     return s.format(a=random.choice(INTRO_WORDS["a"]), b=random.choice(INTRO_WORDS["b"]), c=random.choice(INTRO_WORDS["c"]), d=random.choice(INTRO_WORDS["d"]))
 def gen_price(): return "\n".join(random.choice(PRICE_BLOCKS))
-def gen_cta(bot="@intro_like_bot"): return random.choice(CTA_LINES).format(bot=bot)
-
-# ==============================================================================
-# 2. CÁC HÀM HỖ TRỢ
-# ==============================================================================
 
 def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     try:
@@ -161,14 +154,6 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
             requests.post(url, files={'photo': photo}, data={'chat_id': chat_id, 'caption': caption})
     except: pass
 
-def bien_hinh_van_ban(text):
-    confusables = {'a': ['а'], 'o': ['о'], 'I': ['l'], 'l': ['I'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
-    new_text = ""
-    for char in text:
-        if char in confusables: new_text += random.choice(confusables[char])
-        else: new_text += char
-    return new_text
-
 def get_2fa_code(secret_key):
     totp = pyotp.TOTP(secret_key.replace(" ", ""))
     return totp.now()
@@ -181,7 +166,6 @@ def get_sleep_time_smart():
         print("   🌙 Đêm rồi, ngủ 2-3 tiếng...", flush=True)
         return random.randint(7200, 10800) 
     else:
-        # Ngủ ngày: 45p - 60p (CHUẨN AN TOÀN)
         return random.randint(2700, 3600)
 
 def human_scroll(driver, distance):
@@ -197,13 +181,7 @@ def human_scroll(driver, distance):
 def xu_ly_sau_login(driver):
     print(">>> 🛡️ Đang kiểm tra các bước xác minh/lưu trình duyệt...", flush=True)
     try:
-        check_xpaths = [
-            "//span[contains(text(), 'Lưu')]",      
-            "//span[contains(text(), 'Tiếp tục')]",
-            "//div[@role='button' and contains(., 'Lưu')]",
-            "//div[@role='button' and contains(., 'Tiếp tục')]",
-            "//button[@value='OK']"
-        ]
+        check_xpaths = ["//span[contains(text(), 'Lưu')]", "//span[contains(text(), 'Tiếp tục')]", "//div[@role='button' and contains(., 'Lưu')]", "//div[@role='button' and contains(., 'Tiếp tục')]", "//button[@value='OK']"]
         for _ in range(3):
             for xp in check_xpaths:
                 try:
@@ -258,6 +236,7 @@ def setup_driver():
 # ==============================================================================
 def tuong_tac_dao(driver):
     print("\n--- 🤸 BẮT ĐẦU CHẾ ĐỘ 'ĐI DẠO' ---", flush=True)
+    gui_anh_tele(driver, "🤸 Bot đang đi dạo & lướt Newsfeed (Nuôi nick)...")
     try:
         scroll_times = random.randint(3, 5)
         interacted = False
@@ -268,7 +247,6 @@ def tuong_tac_dao(driver):
             human_scroll(driver, dist)
             time.sleep(random.randint(4, 8))
             
-            # Tỷ lệ tương tác 60%
             if not interacted and random.random() > 0.4:
                 main_like_xpaths = ["//div[@role='button' and contains(@aria-label, 'Thích')]", "//div[@role='button' and contains(@aria-label, 'thích')]", "//div[@role='button' and contains(@aria-label, 'Like')]", "//div[@role='button' and contains(@aria-label, 'like')]"]
                 found_btn = None
@@ -283,7 +261,6 @@ def tuong_tac_dao(driver):
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                     time.sleep(1)
                     
-                    # 70% Thả Tim, 30% Like thường
                     if random.random() > 0.3: 
                         try:
                             actions = ActionChains(driver)
@@ -302,7 +279,9 @@ def tuong_tac_dao(driver):
                                 react_type = chosen.get_attribute("aria-label")
                                 driver.execute_script("arguments[0].click();", chosen) 
                                 actions.release().perform()
+                                
                                 print(f"   + 😍 Đã thả cảm xúc: {react_type}", flush=True)
+                                gui_anh_tele(driver, f"😍 Đã thả cảm xúc dạo: {react_type}")
                                 interacted = True
                             else:
                                 actions.release().perform()
@@ -313,6 +292,7 @@ def tuong_tac_dao(driver):
                         try:
                             found_btn.click()
                             print("   + 👍 Đã Like thường.", flush=True)
+                            gui_anh_tele(driver, "👍 Đã Like thường 1 bài dạo.")
                             interacted = True
                         except: pass
     except Exception as e: print(f"   ! Lỗi đi dạo: {e}", flush=True)
@@ -431,6 +411,8 @@ def main():
                 # 2. LAZY MODE (BẬT LẠI ĐỂ AN TOÀN)
                 if random.random() < 0.2:
                     print(">>> 😴 LAZY MODE: Lượt này lười quá, đi ngủ!", flush=True)
+                    # 🔥 BÁO CÁO LƯỜI
+                    gui_anh_tele(driver, "😴 Lazy Mode: Chỉ lướt sương sương rồi đi ngủ, không Spam.")
                     delay = get_sleep_time_smart()
                     print(f"   + 💤 Ngủ {delay}s...", flush=True)
                     time.sleep(delay)
@@ -469,8 +451,13 @@ def main():
                         if input_box:
                             input_box.click()
                             intro_text = gen_intro(); price_text = gen_price()
+                            
+                            # 🔥 BIẾN HÌNH CHỮ: INTRO VÀ PRICE BIẾN HÌNH HẾT
                             part1_obfuscated = bien_hinh_van_ban(f"{intro_text}\n{price_text}")
+                            
+                            # 🔥 CTA: TỰ ĐỘNG BIẾN HÌNH CHỮ "TELEGRAM", GIỮ NGUYÊN USERNAME
                             part2_cta = gen_cta(bot="@intro_like_bot")
+                            
                             final_content = f"{part1_obfuscated}\n{part2_cta}"
                             
                             print("   + Đang nhập liệu...", flush=True)
@@ -488,6 +475,7 @@ def main():
                                 return
 
                             print(f"   + ✅ Comment OK!", flush=True)
+                            # 🔥 BÁO CÁO COMMENT THÀNH CÔNG
                             gui_anh_tele(driver, f"✅ Đã Comment: {final_content[:30]}...")
                             delay = get_sleep_time_smart()
                             print(f"   + 💤 Ngủ {delay}s...", flush=True)
