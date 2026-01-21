@@ -76,7 +76,7 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     except: pass
 
 def bien_hinh_van_ban(text):
-    confusables = {'a': ['а'], 'o': ['о'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
+    confusables = {'a': ['а'], 'o': ['о'], 'I': ['l'], 'l': ['I'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
     new_text = ""
     for char in text:
         if char in confusables: new_text += random.choice(confusables[char])
