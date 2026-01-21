@@ -112,35 +112,8 @@ CTA_LINES = [
 ]
 
 # ==============================================================================
-# 2. CÁC HÀM HỖ TRỢ (QUAN TRỌNG: BIẾN HÌNH CHỮ)
+# 2. CÁC HÀM HỖ TRỢ
 # ==============================================================================
-
-def bien_hinh_van_ban(text):
-    # Thay thế ký tự Latin bằng Cyrillic (Nga/Đông Âu) nhìn y hệt
-    confusables = {'a': ['а'], 'o': ['о'], 'I': ['l'], 'l': ['I'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
-    new_text = ""
-    for char in text:
-        if char in confusables: new_text += random.choice(confusables[char])
-        else: new_text += char
-    return new_text
-
-# --- 🔥 HÀM TẠO CTA THÔNG MINH (CHỈ BIẾN HÌNH CHỮ TELEGRAM, GIỮ NGUYÊN USERNAME) ---
-def gen_cta(bot="@intro_like_bot"):
-    raw_template = random.choice(CTA_LINES)
-    # Tách câu ra làm đôi dựa vào chỗ điền {bot}
-    parts = raw_template.split("{bot}")
-    
-    # Chỉ chạy biến hình văn bản cho phần Lời dẫn (VD: "👉 Search Tele: ")
-    # Để chữ "Tele", "Telegram" bị đổi mã, tránh FB quét
-    obfuscated_parts = [bien_hinh_van_ban(p) for p in parts]
-    
-    # Ghép lại với username SẠCH (Không biến hình username để khách tìm được)
-    return "{bot}".join(obfuscated_parts).format(bot=bot)
-
-def gen_intro():
-    s = random.choice(INTRO_STRUCTURES)
-    return s.format(a=random.choice(INTRO_WORDS["a"]), b=random.choice(INTRO_WORDS["b"]), c=random.choice(INTRO_WORDS["c"]), d=random.choice(INTRO_WORDS["d"]))
-def gen_price(): return "\n".join(random.choice(PRICE_BLOCKS))
 
 def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
     try:
@@ -153,6 +126,25 @@ def gui_anh_tele(driver, caption="Ảnh chụp màn hình"):
         with open(filename, 'rb') as photo:
             requests.post(url, files={'photo': photo}, data={'chat_id': chat_id, 'caption': caption})
     except: pass
+
+def bien_hinh_van_ban(text):
+    confusables = {'a': ['а'], 'o': ['о'], 'I': ['l'], 'l': ['I'], 'e': ['е'], 'c': ['с'], 'p': ['р'], 'x': ['х'], 'y': ['у'], 'T': ['Т'], 'H': ['Н'], 'B': ['В'], 'K': ['К'], 'M': ['М'], 'A': ['А'], 'O': ['О'], 'E': ['Е'], 'C': ['С'], 'P': ['Р'], 'X': ['Х']}
+    new_text = ""
+    for char in text:
+        if char in confusables: new_text += random.choice(confusables[char])
+        else: new_text += char
+    return new_text
+
+def gen_cta(bot="@intro_like_bot"):
+    raw_template = random.choice(CTA_LINES)
+    parts = raw_template.split("{bot}")
+    obfuscated_parts = [bien_hinh_van_ban(p) for p in parts]
+    return "{bot}".join(obfuscated_parts).format(bot=bot)
+
+def gen_intro():
+    s = random.choice(INTRO_STRUCTURES)
+    return s.format(a=random.choice(INTRO_WORDS["a"]), b=random.choice(INTRO_WORDS["b"]), c=random.choice(INTRO_WORDS["c"]), d=random.choice(INTRO_WORDS["d"]))
+def gen_price(): return "\n".join(random.choice(PRICE_BLOCKS))
 
 def get_2fa_code(secret_key):
     totp = pyotp.TOTP(secret_key.replace(" ", ""))
@@ -232,22 +224,43 @@ def setup_driver():
     return driver
 
 # ==============================================================================
-# 3. TƯƠNG TÁC DẠO (SAFE MODE)
+# 3. TƯƠNG TÁC DẠO (MODE: NGHIỆN FACEBOOK)
 # ==============================================================================
 def tuong_tac_dao(driver):
     print("\n--- 🤸 BẮT ĐẦU CHẾ ĐỘ 'ĐI DẠO' ---", flush=True)
     gui_anh_tele(driver, "🤸 Bot đang đi dạo & lướt Newsfeed (Nuôi nick)...")
     try:
-        scroll_times = random.randint(3, 5)
+        # Mặc định lướt 10-20 lần (Tăng lên nhiều so với cũ)
+        scroll_times = random.randint(10, 20)
+        
+        # 🔥 CHẾ ĐỘ DEEP SCROLL (20% cơ hội)
+        # Nếu trúng chế độ này, nó sẽ lướt điên cuồng 50-80 lần (Tốn 10-15 phút)
+        is_deep_scroll = False
+        if random.random() < 0.2:
+            scroll_times = random.randint(50, 80)
+            is_deep_scroll = True
+            print(">>> 😲 WOW! Bot bị cuốn vào Drama (Deep Scroll Mode)...", flush=True)
+            gui_anh_tele(driver, "😲 Bot đang hóng drama (Lướt sâu 15 phút)...")
+
         interacted = False
+        
         for i in range(scroll_times):
             diet_popup(driver)
             
-            dist = random.randint(500, 800)
+            # Cuộn 1 đoạn
+            dist = random.randint(600, 1000)
             human_scroll(driver, dist)
-            time.sleep(random.randint(4, 8))
             
-            if not interacted and random.random() > 0.4:
+            # 🔥 LOGIC ĐỌC BÀI: Dừng lại ngẫu nhiên lâu hơn
+            wait_time = random.randint(3, 6)
+            if random.random() < 0.1: # 10% cơ hội dừng lại đọc kỹ
+                print(f"   + 👀 Đang đọc bài viết hay quá (Dừng 15s)...", flush=True)
+                wait_time = random.randint(10, 20)
+            
+            time.sleep(wait_time)
+            
+            # Tương tác (Chỉ tương tác 1 lần duy nhất trong suốt quá trình lướt)
+            if not interacted and random.random() > 0.6: # Tăng xác suất tìm nút
                 main_like_xpaths = ["//div[@role='button' and contains(@aria-label, 'Thích')]", "//div[@role='button' and contains(@aria-label, 'thích')]", "//div[@role='button' and contains(@aria-label, 'Like')]", "//div[@role='button' and contains(@aria-label, 'like')]"]
                 found_btn = None
                 for xp in main_like_xpaths:
@@ -258,11 +271,11 @@ def tuong_tac_dao(driver):
                     if found_btn: break
                 
                 if found_btn:
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
-                    time.sleep(1)
-                    
-                    if random.random() > 0.3: 
-                        try:
+                    try:
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
+                        time.sleep(2)
+                        
+                        if random.random() > 0.3: # Thả tim
                             actions = ActionChains(driver)
                             actions.move_to_element(found_btn).click_and_hold().perform()
                             time.sleep(3) 
@@ -279,7 +292,6 @@ def tuong_tac_dao(driver):
                                 react_type = chosen.get_attribute("aria-label")
                                 driver.execute_script("arguments[0].click();", chosen) 
                                 actions.release().perform()
-                                
                                 print(f"   + 😍 Đã thả cảm xúc: {react_type}", flush=True)
                                 gui_anh_tele(driver, f"😍 Đã thả cảm xúc dạo: {react_type}")
                                 interacted = True
@@ -287,14 +299,13 @@ def tuong_tac_dao(driver):
                                 actions.release().perform()
                                 found_btn.click() 
                                 interacted = True
-                        except: pass
-                    else: 
-                        try:
+                        else: # Like thường
                             found_btn.click()
                             print("   + 👍 Đã Like thường.", flush=True)
                             gui_anh_tele(driver, "👍 Đã Like thường 1 bài dạo.")
                             interacted = True
-                        except: pass
+                    except: pass
+                    
     except Exception as e: print(f"   ! Lỗi đi dạo: {e}", flush=True)
     print("--- ✅ KẾT THÚC ĐI DẠO ---\n", flush=True)
 
@@ -405,14 +416,13 @@ def main():
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
-                # 1. ĐI DẠO
+                # 1. ĐI DẠO (CODE MỚI - LƯỚT NHIỀU HƠN)
                 tuong_tac_dao(driver)
 
                 # 2. LAZY MODE (BẬT LẠI ĐỂ AN TOÀN)
                 if random.random() < 0.2:
                     print(">>> 😴 LAZY MODE: Lượt này lười quá, đi ngủ!", flush=True)
-                    # 🔥 BÁO CÁO LƯỜI
-                    gui_anh_tele(driver, "😴 Lazy Mode: Chỉ lướt sương sương rồi đi ngủ, không Spam.")
+                    gui_anh_tele(driver, "😴 Lazy Mode: Chỉ lướt Deep Scroll rồi đi ngủ, không Spam.")
                     delay = get_sleep_time_smart()
                     print(f"   + 💤 Ngủ {delay}s...", flush=True)
                     time.sleep(delay)
@@ -451,13 +461,8 @@ def main():
                         if input_box:
                             input_box.click()
                             intro_text = gen_intro(); price_text = gen_price()
-                            
-                            # 🔥 BIẾN HÌNH CHỮ: INTRO VÀ PRICE BIẾN HÌNH HẾT
                             part1_obfuscated = bien_hinh_van_ban(f"{intro_text}\n{price_text}")
-                            
-                            # 🔥 CTA: TỰ ĐỘNG BIẾN HÌNH CHỮ "TELEGRAM", GIỮ NGUYÊN USERNAME
                             part2_cta = gen_cta(bot="@intro_like_bot")
-                            
                             final_content = f"{part1_obfuscated}\n{part2_cta}"
                             
                             print("   + Đang nhập liệu...", flush=True)
@@ -475,7 +480,6 @@ def main():
                                 return
 
                             print(f"   + ✅ Comment OK!", flush=True)
-                            # 🔥 BÁO CÁO COMMENT THÀNH CÔNG
                             gui_anh_tele(driver, f"✅ Đã Comment: {final_content[:30]}...")
                             delay = get_sleep_time_smart()
                             print(f"   + 💤 Ngủ {delay}s...", flush=True)
