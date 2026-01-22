@@ -15,7 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # ==============================================================================
-# 1. KHO TÀNG CONTENT (V16: AN TOÀN TUYỆT ĐỐI)
+# 1. KHO TÀNG CONTENT (GIỮ NGUYÊN)
 # ==============================================================================
 INTRO_STRUCTURES = [
     "{d} đang cần {a} {c} {b} thì ghé bên mình nhé.",
@@ -230,11 +230,7 @@ def tuong_tac_dao(driver):
     print("\n--- 🤸 BẮT ĐẦU CHẾ ĐỘ 'ĐI DẠO' ---", flush=True)
     gui_anh_tele(driver, "🤸 Bot đang đi dạo & lướt Newsfeed (Nuôi nick)...")
     try:
-        # Mặc định lướt 10-20 lần (Tăng lên nhiều so với cũ)
         scroll_times = random.randint(10, 20)
-        
-        # 🔥 CHẾ ĐỘ DEEP SCROLL (20% cơ hội)
-        # Nếu trúng chế độ này, nó sẽ lướt điên cuồng 50-80 lần (Tốn 10-15 phút)
         is_deep_scroll = False
         if random.random() < 0.2:
             scroll_times = random.randint(50, 80)
@@ -243,24 +239,18 @@ def tuong_tac_dao(driver):
             gui_anh_tele(driver, "😲 Bot đang hóng drama (Lướt sâu 15 phút)...")
 
         interacted = False
-        
         for i in range(scroll_times):
             diet_popup(driver)
-            
-            # Cuộn 1 đoạn
             dist = random.randint(600, 1000)
             human_scroll(driver, dist)
             
-            # 🔥 LOGIC ĐỌC BÀI: Dừng lại ngẫu nhiên lâu hơn
             wait_time = random.randint(3, 6)
-            if random.random() < 0.1: # 10% cơ hội dừng lại đọc kỹ
+            if random.random() < 0.1:
                 print(f"   + 👀 Đang đọc bài viết hay quá (Dừng 15s)...", flush=True)
                 wait_time = random.randint(10, 20)
-            
             time.sleep(wait_time)
             
-            # Tương tác (Chỉ tương tác 1 lần duy nhất trong suốt quá trình lướt)
-            if not interacted and random.random() > 0.6: # Tăng xác suất tìm nút
+            if not interacted and random.random() > 0.6:
                 main_like_xpaths = ["//div[@role='button' and contains(@aria-label, 'Thích')]", "//div[@role='button' and contains(@aria-label, 'thích')]", "//div[@role='button' and contains(@aria-label, 'Like')]", "//div[@role='button' and contains(@aria-label, 'like')]"]
                 found_btn = None
                 for xp in main_like_xpaths:
@@ -274,8 +264,7 @@ def tuong_tac_dao(driver):
                     try:
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", found_btn)
                         time.sleep(2)
-                        
-                        if random.random() > 0.3: # Thả tim
+                        if random.random() > 0.3:
                             actions = ActionChains(driver)
                             actions.move_to_element(found_btn).click_and_hold().perform()
                             time.sleep(3) 
@@ -299,18 +288,17 @@ def tuong_tac_dao(driver):
                                 actions.release().perform()
                                 found_btn.click() 
                                 interacted = True
-                        else: # Like thường
+                        else: 
                             found_btn.click()
                             print("   + 👍 Đã Like thường.", flush=True)
                             gui_anh_tele(driver, "👍 Đã Like thường 1 bài dạo.")
                             interacted = True
                     except: pass
-                    
     except Exception as e: print(f"   ! Lỗi đi dạo: {e}", flush=True)
     print("--- ✅ KẾT THÚC ĐI DẠO ---\n", flush=True)
 
 # ==============================================================================
-# 4. MAIN LOOP (SAFE MODE)
+# 4. MAIN LOOP (SAFE MODE + FIX 2FA TIẾNG VIỆT)
 # ==============================================================================
 def main():
     print(">>> 🚀 BOT KHỞI ĐỘNG...", flush=True)
@@ -348,35 +336,35 @@ def main():
         if not login_clicked:
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
-        print(">>> ⏳ Chờ 15s...", flush=True)
         time.sleep(15)
-        
-        # --- XỬ LÝ 2FA ---
+
+        # --- 2FA LOGIC (ĐÃ FIX: THÊM TỪ KHÓA TIẾNG VIỆT) ---
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
         try_btn = None
+        # Kiểm tra nút "Try another way" hoặc "Thử cách khác"
         try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
         for xp in try_xpaths:
             try:
                 if len(driver.find_elements(By.XPATH, xp)) > 0:
-                    try_btn = driver.find_element(By.XPATH, xp)
-                    break
+                    try_btn = driver.find_element(By.XPATH, xp); break
             except: continue
             
         if try_btn:
-            try_btn.click()
-            time.sleep(3)
-            auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
+            try_btn.click(); time.sleep(3)
+            # 🔥 FIX: Thêm "Ứng dụng xác thực" để bot hiểu tiếng Việt
+            auth_app_xpaths = [
+                "//div[@role='radio' and contains(@aria-label, 'Authentication app')]", 
+                "//div[contains(., 'Authentication app')]",
+                "//div[contains(., 'Ứng dụng xác thực')]",
+                "//span[contains(text(), 'Ứng dụng xác thực')]"
+            ]
             for axp in auth_app_xpaths:
-                try:
-                    driver.find_element(By.XPATH, axp).click()
-                    break
+                try: driver.find_element(By.XPATH, axp).click(); break
                 except: continue
             time.sleep(2)
             continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
             for cxp in continue_xpaths:
-                try:
-                    driver.find_element(By.XPATH, cxp).click()
-                    break
+                try: driver.find_element(By.XPATH, cxp).click(); break
                 except: continue
             time.sleep(5)
 
@@ -384,38 +372,26 @@ def main():
         try:
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
-                if inp.get_attribute("type") in ["tel", "number"]:
-                    fa_input = inp
-                    break
+                if inp.get_attribute("type") in ["tel", "number"]: fa_input = inp; break
         except: pass
-
         if not fa_input:
             fa_xpaths = ["//input[@name='approvals_code']", "//input[@placeholder='Code']", "//input[@aria-label='Code']"]
             for xp in fa_xpaths:
-                try:
-                    fa_input = driver.find_element(By.XPATH, xp)
-                    break
+                try: fa_input = driver.find_element(By.XPATH, xp); break
                 except: continue
 
         if fa_input:
             otp = get_2fa_code(key_2fa)
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
             gui_anh_tele(driver, f"🔥 Nhập OTP: {otp}")
-            fa_input.click()
-            fa_input.send_keys(otp)
-            time.sleep(2)
+            fa_input.click(); fa_input.send_keys(otp); time.sleep(2)
             submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
             for btn_xp in submit_xpaths:
-                try:
-                    driver.find_element(By.XPATH, btn_xp).click()
-                    break
+                try: driver.find_element(By.XPATH, btn_xp).click(); break
                 except: continue
-            fa_input.send_keys(Keys.ENTER)
-            time.sleep(10)
-
-        if len(driver.find_elements(By.NAME, "pass")) > 0:
-            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI!")
-            return
+            fa_input.send_keys(Keys.ENTER); time.sleep(10)
+        
+        xu_ly_sau_login(driver)
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ HUMAN SCROLL...")
 
         # ==========================================
@@ -435,10 +411,10 @@ def main():
                 driver.get("https://m.facebook.com/")
                 time.sleep(5)
                 
-                # 1. ĐI DẠO (CODE MỚI - LƯỚT NHIỀU HƠN)
+                # 1. ĐI DẠO
                 tuong_tac_dao(driver)
 
-                # 2. LAZY MODE (BẬT LẠI ĐỂ AN TOÀN)
+                # 2. LAZY MODE
                 if random.random() < 0.2:
                     print(">>> 😴 LAZY MODE: Lượt này lười quá, đi ngủ!", flush=True)
                     gui_anh_tele(driver, "😴 Lazy Mode: Chỉ lướt Deep Scroll rồi đi ngủ, không Spam.")
