@@ -348,28 +348,35 @@ def main():
         if not login_clicked:
             try: driver.find_element(By.NAME, "pass").send_keys(Keys.ENTER)
             except: pass
+        print(">>> ⏳ Chờ 15s...", flush=True)
         time.sleep(15)
-
-        # --- 2FA LOGIC ---
+        
+        # --- XỬ LÝ 2FA ---
         print(">>> 🕵️ Kiểm tra 2FA...", flush=True)
         try_btn = None
         try_xpaths = ["//div[@role='button' and contains(., 'Try another way')]", "//div[@role='button' and contains(., 'Thử cách khác')]"]
         for xp in try_xpaths:
             try:
                 if len(driver.find_elements(By.XPATH, xp)) > 0:
-                    try_btn = driver.find_element(By.XPATH, xp); break
+                    try_btn = driver.find_element(By.XPATH, xp)
+                    break
             except: continue
             
         if try_btn:
-            try_btn.click(); time.sleep(3)
+            try_btn.click()
+            time.sleep(3)
             auth_app_xpaths = ["//div[@role='radio' and contains(@aria-label, 'Authentication app')]", "//div[contains(., 'Authentication app')]"]
             for axp in auth_app_xpaths:
-                try: driver.find_element(By.XPATH, axp).click(); break
+                try:
+                    driver.find_element(By.XPATH, axp).click()
+                    break
                 except: continue
             time.sleep(2)
             continue_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']"]
             for cxp in continue_xpaths:
-                try: driver.find_element(By.XPATH, cxp).click(); break
+                try:
+                    driver.find_element(By.XPATH, cxp).click()
+                    break
                 except: continue
             time.sleep(5)
 
@@ -377,26 +384,38 @@ def main():
         try:
             inputs = driver.find_elements(By.TAG_NAME, "input")
             for inp in inputs:
-                if inp.get_attribute("type") in ["tel", "number"]: fa_input = inp; break
+                if inp.get_attribute("type") in ["tel", "number"]:
+                    fa_input = inp
+                    break
         except: pass
+
         if not fa_input:
             fa_xpaths = ["//input[@name='approvals_code']", "//input[@placeholder='Code']", "//input[@aria-label='Code']"]
             for xp in fa_xpaths:
-                try: fa_input = driver.find_element(By.XPATH, xp); break
+                try:
+                    fa_input = driver.find_element(By.XPATH, xp)
+                    break
                 except: continue
 
         if fa_input:
             otp = get_2fa_code(key_2fa)
             print(f">>> 🔥 Nhập OTP: {otp}", flush=True)
             gui_anh_tele(driver, f"🔥 Nhập OTP: {otp}")
-            fa_input.click(); fa_input.send_keys(otp); time.sleep(2)
+            fa_input.click()
+            fa_input.send_keys(otp)
+            time.sleep(2)
             submit_xpaths = ["//div[@role='button' and @aria-label='Continue']", "//div[@role='button' and @aria-label='Tiếp tục']", "//button[@type='submit']", "//button[@id='checkpointSubmitButton']"]
             for btn_xp in submit_xpaths:
-                try: driver.find_element(By.XPATH, btn_xp).click(); break
+                try:
+                    driver.find_element(By.XPATH, btn_xp).click()
+                    break
                 except: continue
-            fa_input.send_keys(Keys.ENTER); time.sleep(10)
-        
-        xu_ly_sau_login(driver)
+            fa_input.send_keys(Keys.ENTER)
+            time.sleep(10)
+
+        if len(driver.find_elements(By.NAME, "pass")) > 0:
+            gui_anh_tele(driver, "❌ LOGIN THẤT BẠI!")
+            return
         gui_anh_tele(driver, "✅ LOGIN OK! Vào chế độ HUMAN SCROLL...")
 
         # ==========================================
