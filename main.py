@@ -62,7 +62,7 @@ signal.signal(signal.SIGINT, grace_shutdown)
 def init_handshake(transaction):
     service_node.send_message(
         transaction.chat.id,
-        "👋 Chào mừng bạn đến với INTRO LIKE!",
+        "👋 Chào mừng bạn đến với Tỷ Phú Bầu Trời!",
         reply_markup=main_dashboard
     )
     service_node.send_message(
