@@ -37,7 +37,7 @@ btn_main = types.KeyboardButton(text="Mở Mini App 🚀", web_app=web_module_co
 btn_channel = types.KeyboardButton(text="📢 Intro Like Channel")
 btn_group = types.KeyboardButton(text="👥 Cộng Đồng Intro Like")
 
-// main_dashboard.add(btn_main, btn_channel, btn_group)
+####### main_dashboard.add(btn_main, btn_channel, btn_group)
 main_dashboard.add(btn_main)
 
 inline_start = types.InlineKeyboardMarkup()
